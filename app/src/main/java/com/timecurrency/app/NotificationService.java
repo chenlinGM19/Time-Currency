@@ -5,7 +5,6 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
@@ -38,53 +37,22 @@ public class NotificationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Safe start foreground
-        try {
-            int type = 0;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
-            }
-            startForeground(NOTIFICATION_ID, buildNotification(), type);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         if (intent != null) {
             String action = intent.getAction();
             if ("INCREMENT".equals(action)) {
                 CurrencyManager.updateCurrency(this, 1);
             } else if ("DECREMENT".equals(action)) {
                 CurrencyManager.updateCurrency(this, -1);
-            } else if (ACTION_REFRESH.equals(action)) {
-                NotificationManager manager = getSystemService(NotificationManager.class);
-                if (manager != null) {
-                    manager.notify(NOTIFICATION_ID, buildNotification());
-                }
             }
         }
-            
-        return START_STICKY;
-    }
-    
-    @Override
-    public void onTaskRemoved(Intent rootIntent) {
-        try {
-            Intent restartServiceIntent = new Intent(getApplicationContext(), NotificationService.class);
-            PendingIntent restartServicePendingIntent = PendingIntent.getService(
-                    getApplicationContext(), 1, restartServiceIntent, PendingIntent.FLAG_IMMUTABLE);
-            
-            android.app.AlarmManager alarmService = (android.app.AlarmManager) getApplicationContext().getSystemService(ALARM_SERVICE);
-            if (alarmService != null) {
-                alarmService.set(
-                    android.app.AlarmManager.ELAPSED_REALTIME,
-                    android.os.SystemClock.elapsedRealtime() + 1000,
-                    restartServicePendingIntent);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        
+        int type = 0;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
         }
 
-        super.onTaskRemoved(rootIntent);
+        startForeground(NOTIFICATION_ID, buildNotification(), type);
+        return START_STICKY;
     }
 
     private Notification buildNotification() {
@@ -101,38 +69,47 @@ public class NotificationService extends Service {
         decIntent.setAction("DECREMENT");
         PendingIntent pendingDec = PendingIntent.getService(this, 2, decIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
+        // --- Custom View Setup ---
         RemoteViews customView = new RemoteViews(getPackageName(), R.layout.notification_custom);
         customView.setTextViewText(R.id.notif_amount, String.valueOf(amount));
         
         customView.setOnClickPendingIntent(R.id.notif_btn_plus, pendingInc);
         customView.setOnClickPendingIntent(R.id.notif_btn_minus, pendingDec);
-        customView.setOnClickPendingIntent(R.id.notif_amount, pendingOpenApp);
-        
-        // Convert Vector Drawables to Bitmaps safely
-        // Use try-catch inside helper to avoid crash
-        Bitmap iconBmp = getBitmapFromVector(R.drawable.ic_notification, Color.parseColor("#03DAC6"));
-        Bitmap plusBmp = getBitmapFromVector(R.drawable.ic_plus, Color.parseColor("#03DAC6"));
-        Bitmap minusBmp = getBitmapFromVector(R.drawable.ic_minus, Color.parseColor("#CF6679"));
+        customView.setOnClickPendingIntent(R.id.notif_text_container, pendingOpenApp);
+        customView.setOnClickPendingIntent(R.id.notif_icon, pendingOpenApp);
+
+        // Apply colors to icons programmatically to ensure visibility and style
+        // Primary Color (Light Purple) for Icon and Plus
+        int colorPrimary = Color.parseColor("#D0BCFF"); 
+        // Error Color (Soft Red) for Minus
+        int colorError = Color.parseColor("#F2B8B5");
+
+        Bitmap iconBmp = getBitmapFromVector(R.drawable.ic_notification, colorPrimary);
+        Bitmap plusBmp = getBitmapFromVector(R.drawable.ic_plus, colorPrimary);
+        Bitmap minusBmp = getBitmapFromVector(R.drawable.ic_minus, colorError);
 
         if (iconBmp != null) customView.setImageViewBitmap(R.id.notif_icon, iconBmp);
         if (plusBmp != null) customView.setImageViewBitmap(R.id.notif_btn_plus, plusBmp);
         if (minusBmp != null) customView.setImageViewBitmap(R.id.notif_btn_minus, minusBmp);
 
+        // --- Notification Builder ---
+        // We use DecoratedCustomViewStyle for native system decoration integration
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setCustomContentView(customView)
-                // Use DecoratedCustomViewStyle to ensure it looks standard (with header time etc)
-                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                // Also set for big view to ensure consistency when expanded
+                .setCustomBigContentView(customView) 
                 .setContentIntent(pendingOpenApp)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setPriority(NotificationCompat.PRIORITY_MAX);
+                .setPriority(NotificationCompat.PRIORITY_LOW) // Keeps it quiet
+                .setStyle(new NotificationCompat.DecoratedCustomViewStyle());
 
         return builder.build();
     }
-
-    // Helper to generate a Bitmap from a VectorDrawable with a tint
+    
+    // Helper: Safely convert Vector to Bitmap with tint
     private Bitmap getBitmapFromVector(@DrawableRes int resId, @ColorInt int tint) {
         try {
             Drawable drawable = ContextCompat.getDrawable(this, resId);
@@ -147,7 +124,6 @@ public class NotificationService extends Service {
 
             int width = drawable.getIntrinsicWidth();
             int height = drawable.getIntrinsicHeight();
-            // Fallback size if intrinsic is invalid
             if (width <= 0) width = 96;
             if (height <= 0) height = 96;
 
@@ -158,7 +134,6 @@ public class NotificationService extends Service {
 
             return bitmap;
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }

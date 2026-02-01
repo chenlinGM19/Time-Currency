@@ -10,11 +10,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.google.android.material.button.MaterialButton;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
     private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent != null && intent.hasExtra(CurrencyManager.EXTRA_AMOUNT)) {
+            if (intent.hasExtra(CurrencyManager.EXTRA_AMOUNT)) {
                 int amount = intent.getIntExtra(CurrencyManager.EXTRA_AMOUNT, 0);
                 tvAmount.setText(String.valueOf(amount));
             } else {
@@ -38,42 +41,40 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         tvAmount = findViewById(R.id.tvAmount);
-        Button btnAdd = findViewById(R.id.btnAdd);
-        Button btnMinus = findViewById(R.id.btnMinus);
+        View btnAdd = findViewById(R.id.btnAdd);
+        View btnMinus = findViewById(R.id.btnMinus);
 
-        btnAdd.setOnClickListener(v -> updateCurrencyUI(1));
-        btnMinus.setOnClickListener(v -> updateCurrencyUI(-1));
+        btnAdd.setOnClickListener(v -> updateCurrencyOptimistic(1));
+        btnMinus.setOnClickListener(v -> updateCurrencyOptimistic(-1));
 
         checkPermissions();
         startForegroundService();
         refreshUI();
     }
-
-    private void updateCurrencyUI(int delta) {
+    
+    private void updateCurrencyOptimistic(int delta) {
+        // 1. Update UI immediately for responsiveness
         try {
-            String text = tvAmount.getText().toString();
-            if (text == null || text.isEmpty() || text.equals("--")) {
-                text = "0";
-            }
-            int current = Integer.parseInt(text);
+            String currentStr = tvAmount.getText().toString();
+            int current = Integer.parseInt(currentStr);
             tvAmount.setText(String.valueOf(current + delta));
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            // Ignore parse errors
         }
-
+        
+        // 2. Commit to storage and broadcast
         CurrencyManager.updateCurrency(this, delta);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        
         IntentFilter filter = new IntentFilter(CurrencyManager.ACTION_UPDATE_UI);
-        // FIX: Explicitly handle receiver export flag for Android 14+ (API 34)
+        // Correct flag handling for Android 13/14+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-             registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-             registerReceiver(updateReceiver, filter);
+            registerReceiver(updateReceiver, filter);
         }
         refreshUI();
     }
@@ -83,8 +84,8 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         try {
             unregisterReceiver(updateReceiver);
-        } catch (IllegalArgumentException e) {
-            // Receiver might not be registered
+        } catch (Exception e) {
+            // Receiver not registered
         }
     }
 
@@ -95,10 +96,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void startForegroundService() {
         Intent serviceIntent = new Intent(this, NotificationService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
