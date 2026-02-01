@@ -20,11 +20,10 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView tvAmount;
     
-    // Receiver for updates coming from Service/Widget
     private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra(CurrencyManager.EXTRA_AMOUNT)) {
+            if (intent != null && intent.hasExtra(CurrencyManager.EXTRA_AMOUNT)) {
                 int amount = intent.getIntExtra(CurrencyManager.EXTRA_AMOUNT, 0);
                 tvAmount.setText(String.valueOf(amount));
             } else {
@@ -42,14 +41,8 @@ public class MainActivity extends AppCompatActivity {
         Button btnAdd = findViewById(R.id.btnAdd);
         Button btnMinus = findViewById(R.id.btnMinus);
 
-        // Optimistic UI Update: Update text immediately for instant response
-        btnAdd.setOnClickListener(v -> {
-            updateCurrencyUI(1);
-        });
-
-        btnMinus.setOnClickListener(v -> {
-            updateCurrencyUI(-1);
-        });
+        btnAdd.setOnClickListener(v -> updateCurrencyUI(1));
+        btnMinus.setOnClickListener(v -> updateCurrencyUI(-1));
 
         checkPermissions();
         startForegroundService();
@@ -57,7 +50,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateCurrencyUI(int delta) {
-        // 1. Get current displayed value to update UI instantly
         try {
             String text = tvAmount.getText().toString();
             if (text == null || text.isEmpty() || text.equals("--")) {
@@ -66,21 +58,22 @@ public class MainActivity extends AppCompatActivity {
             int current = Integer.parseInt(text);
             tvAmount.setText(String.valueOf(current + delta));
         } catch (NumberFormatException e) {
-            // Fallback if text is weird, just don't crash and let the background update handle it
             e.printStackTrace();
         }
 
-        // 2. Perform actual data save and broadcast
         CurrencyManager.updateCurrency(this, delta);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        
+        IntentFilter filter = new IntentFilter(CurrencyManager.ACTION_UPDATE_UI);
+        // FIX: Explicitly handle receiver export flag for Android 14+ (API 34)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-             registerReceiver(updateReceiver, new IntentFilter(CurrencyManager.ACTION_UPDATE_UI), Context.RECEIVER_NOT_EXPORTED);
+             registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-             registerReceiver(updateReceiver, new IntentFilter(CurrencyManager.ACTION_UPDATE_UI));
+             registerReceiver(updateReceiver, filter);
         }
         refreshUI();
     }
@@ -88,7 +81,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        unregisterReceiver(updateReceiver);
+        try {
+            unregisterReceiver(updateReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver might not be registered
+        }
     }
 
     private void refreshUI() {

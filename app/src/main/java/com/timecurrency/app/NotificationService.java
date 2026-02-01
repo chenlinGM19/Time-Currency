@@ -5,15 +5,24 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.IBinder;
 import android.widget.RemoteViews;
 
+import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 public class NotificationService extends Service {
 
@@ -29,9 +38,16 @@ public class NotificationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Essential: call startForeground immediately to prevent crash on Android 8+
-        startForeground(NOTIFICATION_ID, buildNotification(), 
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ? ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC : 0);
+        // Safe start foreground
+        try {
+            int type = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                type = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
+            }
+            startForeground(NOTIFICATION_ID, buildNotification(), type);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         if (intent != null) {
             String action = intent.getAction();
@@ -40,7 +56,6 @@ public class NotificationService extends Service {
             } else if ("DECREMENT".equals(action)) {
                 CurrencyManager.updateCurrency(this, -1);
             } else if (ACTION_REFRESH.equals(action)) {
-                // Just update the notification (already done by startForeground above)
                 NotificationManager manager = getSystemService(NotificationManager.class);
                 if (manager != null) {
                     manager.notify(NOTIFICATION_ID, buildNotification());
@@ -53,17 +68,20 @@ public class NotificationService extends Service {
     
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        // This ensures the service restarts if the user swipes the app away from recents
-        Intent restartServiceIntent = new Intent(getApplicationContext(), NotificationService.class);
-        PendingIntent restartServicePendingIntent = PendingIntent.getService(
-                getApplicationContext(), 1, restartServiceIntent, PendingIntent.FLAG_IMMUTABLE);
-        
-        android.app.AlarmManager alarmService = (android.app.AlarmManager) getApplicationContext().getSystemService(ALARM_SERVICE);
-        if (alarmService != null) {
-            alarmService.set(
-                android.app.AlarmManager.ELAPSED_REALTIME,
-                android.os.SystemClock.elapsedRealtime() + 1000,
-                restartServicePendingIntent);
+        try {
+            Intent restartServiceIntent = new Intent(getApplicationContext(), NotificationService.class);
+            PendingIntent restartServicePendingIntent = PendingIntent.getService(
+                    getApplicationContext(), 1, restartServiceIntent, PendingIntent.FLAG_IMMUTABLE);
+            
+            android.app.AlarmManager alarmService = (android.app.AlarmManager) getApplicationContext().getSystemService(ALARM_SERVICE);
+            if (alarmService != null) {
+                alarmService.set(
+                    android.app.AlarmManager.ELAPSED_REALTIME,
+                    android.os.SystemClock.elapsedRealtime() + 1000,
+                    restartServicePendingIntent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         super.onTaskRemoved(rootIntent);
@@ -83,36 +101,66 @@ public class NotificationService extends Service {
         decIntent.setAction("DECREMENT");
         PendingIntent pendingDec = PendingIntent.getService(this, 2, decIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        // Custom View Setup
         RemoteViews customView = new RemoteViews(getPackageName(), R.layout.notification_custom);
         customView.setTextViewText(R.id.notif_amount, String.valueOf(amount));
         
-        // Set Listeners
         customView.setOnClickPendingIntent(R.id.notif_btn_plus, pendingInc);
         customView.setOnClickPendingIntent(R.id.notif_btn_minus, pendingDec);
         customView.setOnClickPendingIntent(R.id.notif_amount, pendingOpenApp);
         
-        // Programmatic Coloring (Crash Proof)
-        // Icon -> Cyan
-        customView.setInt(R.id.notif_icon, "setColorFilter", Color.parseColor("#03DAC6"));
-        // Plus -> Cyan
-        customView.setInt(R.id.notif_btn_plus, "setColorFilter", Color.parseColor("#03DAC6"));
-        // Minus -> Red/Pink
-        customView.setInt(R.id.notif_btn_minus, "setColorFilter", Color.parseColor("#CF6679"));
+        // Convert Vector Drawables to Bitmaps safely
+        // Use try-catch inside helper to avoid crash
+        Bitmap iconBmp = getBitmapFromVector(R.drawable.ic_notification, Color.parseColor("#03DAC6"));
+        Bitmap plusBmp = getBitmapFromVector(R.drawable.ic_plus, Color.parseColor("#03DAC6"));
+        Bitmap minusBmp = getBitmapFromVector(R.drawable.ic_minus, Color.parseColor("#CF6679"));
 
-        // Use the same view for expanded and collapsed to keep it consistent and small
+        if (iconBmp != null) customView.setImageViewBitmap(R.id.notif_icon, iconBmp);
+        if (plusBmp != null) customView.setImageViewBitmap(R.id.notif_btn_plus, plusBmp);
+        if (minusBmp != null) customView.setImageViewBitmap(R.id.notif_btn_minus, minusBmp);
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setCustomContentView(customView)
-                .setCustomBigContentView(customView) 
+                // Use DecoratedCustomViewStyle to ensure it looks standard (with header time etc)
+                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                 .setContentIntent(pendingOpenApp)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Shows content on lock screen
-                .setPriority(NotificationCompat.PRIORITY_MAX) // Helps keep it at the top
-                .setStyle(new NotificationCompat.DecoratedCustomViewStyle()); // Wraps it in standard container
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setPriority(NotificationCompat.PRIORITY_MAX);
 
         return builder.build();
+    }
+
+    // Helper to generate a Bitmap from a VectorDrawable with a tint
+    private Bitmap getBitmapFromVector(@DrawableRes int resId, @ColorInt int tint) {
+        try {
+            Drawable drawable = ContextCompat.getDrawable(this, resId);
+            if (drawable == null) return null;
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                drawable = (DrawableCompat.wrap(drawable)).mutate();
+            }
+            
+            DrawableCompat.setTint(drawable, tint);
+            DrawableCompat.setTintMode(drawable, PorterDuff.Mode.SRC_IN);
+
+            int width = drawable.getIntrinsicWidth();
+            int height = drawable.getIntrinsicHeight();
+            // Fallback size if intrinsic is invalid
+            if (width <= 0) width = 96;
+            if (height <= 0) height = 96;
+
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            drawable.draw(canvas);
+
+            return bitmap;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private void createNotificationChannel() {
@@ -120,7 +168,7 @@ public class NotificationService extends Service {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Currency Status",
-                    NotificationManager.IMPORTANCE_LOW // Low sound, but MAX priority in builder handles visual
+                    NotificationManager.IMPORTANCE_LOW
             );
             channel.setDescription("Shows persistent time currency");
             channel.setShowBadge(false);

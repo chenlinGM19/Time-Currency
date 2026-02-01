@@ -8,15 +8,14 @@
     android:paddingStart="16dp"
     android:paddingEnd="16dp">
 
-    <!-- App Icon / Logo -->
+    <!-- App Icon / Logo (Src set in code) -->
     <ImageView
         android:id="@+id/notif_icon"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:src="@drawable/ic_notification"
         android:layout_marginEnd="16dp" />
 
-    <!-- Balance Text -->
+    <!-- Balance Text: Use textColorPrimary so it is visible in both Light and Dark notification shades -->
     <TextView
         android:id="@+id/notif_amount"
         android:layout_width="0dp"
@@ -25,7 +24,7 @@
         android:text="--"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:textColor="#FFFFFF" />
+        android:textColor="?android:attr/textColorPrimary" />
 
     <!-- Controls Container -->
     <LinearLayout
@@ -34,12 +33,12 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <!-- Minus Button (Src set in code) -->
         <ImageButton
             android:id="@+id/notif_btn_minus"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_minus"
             android:scaleType="centerInside"
             android:padding="8dp" />
 
@@ -47,12 +46,12 @@
             android:layout_width="16dp"
             android:layout_height="wrap_content"/>
 
+        <!-- Plus Button (Src set in code) -->
         <ImageButton
             android:id="@+id/notif_btn_plus"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_plus"
             android:scaleType="centerInside"
             android:padding="8dp" />
             

@@ -28,12 +28,18 @@ public class CurrencyManager {
         Intent serviceIntent = new Intent(context, NotificationService.class);
         serviceIntent.setAction(NotificationService.ACTION_REFRESH);
         
-        // Critical Fix: Use startForegroundService on Android O+ to prevent IllegalStateException
-        // when app is in background (e.g., widget update)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(serviceIntent);
-        } else {
-            context.startService(serviceIntent);
+        // Critical Fix: Use startForegroundService on Android O+ to prevent IllegalStateException.
+        // Also wrap in try-catch because Android 12+ restricts starting services from the background (e.g., Widget click).
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent);
+            } else {
+                context.startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            // If the app is restricted from starting the service (background), just log it.
+            // The Widget and Activity UI will still update via broadcasts below.
+            e.printStackTrace();
         }
 
         // Notify Widget to update
