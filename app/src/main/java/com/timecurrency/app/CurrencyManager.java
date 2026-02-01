@@ -3,6 +3,7 @@ package com.timecurrency.app;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 
 public class CurrencyManager {
 
@@ -26,12 +27,18 @@ public class CurrencyManager {
         // Notify Service to update Notification
         Intent serviceIntent = new Intent(context, NotificationService.class);
         serviceIntent.setAction(NotificationService.ACTION_REFRESH);
-        context.startService(serviceIntent);
+        
+        // Critical Fix: Use startForegroundService on Android O+ to prevent IllegalStateException
+        // when app is in background (e.g., widget update)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent);
+        } else {
+            context.startService(serviceIntent);
+        }
 
         // Notify Widget to update
         Intent widgetIntent = new Intent(context, CurrencyWidgetProvider.class);
         widgetIntent.setAction("android.appwidget.action.APPWIDGET_UPDATE");
-        // We trigger a manual update broadcast for the widget provider
         context.sendBroadcast(widgetIntent);
         
         // Notify Activity with the new value directly for instant update

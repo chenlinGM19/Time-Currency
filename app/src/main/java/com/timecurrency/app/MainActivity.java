@@ -59,11 +59,15 @@ public class MainActivity extends AppCompatActivity {
     private void updateCurrencyUI(int delta) {
         // 1. Get current displayed value to update UI instantly
         try {
-            int current = Integer.parseInt(tvAmount.getText().toString());
+            String text = tvAmount.getText().toString();
+            if (text == null || text.isEmpty() || text.equals("--")) {
+                text = "0";
+            }
+            int current = Integer.parseInt(text);
             tvAmount.setText(String.valueOf(current + delta));
         } catch (NumberFormatException e) {
-            // Fallback if text is weird
-            refreshUI();
+            // Fallback if text is weird, just don't crash and let the background update handle it
+            e.printStackTrace();
         }
 
         // 2. Perform actual data save and broadcast
@@ -73,7 +77,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(updateReceiver, new IntentFilter(CurrencyManager.ACTION_UPDATE_UI), Context.RECEIVER_NOT_EXPORTED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+             registerReceiver(updateReceiver, new IntentFilter(CurrencyManager.ACTION_UPDATE_UI), Context.RECEIVER_NOT_EXPORTED);
+        } else {
+             registerReceiver(updateReceiver, new IntentFilter(CurrencyManager.ACTION_UPDATE_UI));
+        }
         refreshUI();
     }
 
