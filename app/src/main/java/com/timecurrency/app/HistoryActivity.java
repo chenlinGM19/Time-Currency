@@ -2,6 +2,7 @@ package com.timecurrency.app;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -68,15 +69,12 @@ public class HistoryActivity extends AppCompatActivity {
         
         // Edge to Edge
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
         
         setContentView(R.layout.activity_history);
         
-        // Apply insets
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
-            return WindowInsetsCompat.CONSUMED;
-        });
+        // Removed manual insets listener on android.R.id.content to allow XML fitsSystemWindows to handle background correctly
 
         findViewById(R.id.toolbar).setOnClickListener(v -> finish());
 

@@ -9,14 +9,7 @@
     android:paddingTop="8dp"
     android:paddingBottom="8dp">
 
-    <!-- Icon -->
-    <ImageView
-        android:id="@+id/notif_icon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@drawable/ic_notification"
-        android:layout_marginEnd="16dp"
-        android:alpha="0.8"/>
+    <!-- Icon removed as requested -->
 
     <!-- Balance Info -->
     <LinearLayout
@@ -24,7 +17,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
         <TextView
             android:layout_width="wrap_content"
@@ -34,7 +28,8 @@
             android:textStyle="bold"
             android:textColor="?android:attr/textColorSecondary"
             android:textAllCaps="true"
-            android:letterSpacing="0.1"/>
+            android:letterSpacing="0.1"
+            android:layout_marginEnd="4dp"/>
 
         <TextView
             android:id="@+id/notif_amount"
@@ -62,8 +57,6 @@
             android:scaleType="centerInside"
             android:padding="10dp"
             android:layout_marginEnd="8dp" />
-
-        <!-- Space view removed as it is not supported in RemoteViews -->
 
         <ImageButton
             android:id="@+id/notif_btn_plus"

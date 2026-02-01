@@ -9,9 +9,10 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.widget.TextView;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -96,6 +97,23 @@ public class MainActivity extends AppCompatActivity {
         }
         
         refreshUI();
+    }
+    
+    /**
+     * Intercept hardware volume keys to control currency.
+     * Returns true to prevent system volume change.
+     */
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                updateCurrencyOptimistic(1);
+                return true;
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+                updateCurrencyOptimistic(-1);
+                return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
     
     private void updateCurrencyOptimistic(int delta) {

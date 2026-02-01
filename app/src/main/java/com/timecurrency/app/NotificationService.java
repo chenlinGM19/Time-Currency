@@ -77,28 +77,19 @@ public class NotificationService extends Service {
         RemoteViews customView = new RemoteViews(context.getPackageName(), R.layout.notification_custom);
         
         customView.setTextViewText(R.id.notif_amount, String.valueOf(amount));
-        // We can't easily change the small label ID without adding an ID to it in layout.
-        // Assuming user wants to know context, let's try to set title if possible or update layout.
-        // Since original layout didn't have ID for label, we might want to add one or just accept 'TIME CURRENCY' static text.
-        // However, looking at previous XML changes, the label didn't have an ID in notification_custom.xml.
-        // For now, we leave the static label "TIME CURRENCY" as it's the app name, 
-        // but the amount changes based on context.
         
-        customView.setImageViewResource(R.id.notif_icon, R.drawable.ic_notification);
         customView.setImageViewResource(R.id.notif_btn_plus, R.drawable.ic_plus);
         customView.setImageViewResource(R.id.notif_btn_minus, R.drawable.ic_minus);
         
         int colorPrimary = Color.parseColor("#D0BCFF"); 
         int colorError = Color.parseColor("#F2B8B5");
         
-        customView.setInt(R.id.notif_icon, "setColorFilter", colorPrimary);
         customView.setInt(R.id.notif_btn_plus, "setColorFilter", colorPrimary);
         customView.setInt(R.id.notif_btn_minus, "setColorFilter", colorError);
 
         customView.setOnClickPendingIntent(R.id.notif_btn_plus, pendingInc);
         customView.setOnClickPendingIntent(R.id.notif_btn_minus, pendingDec);
         customView.setOnClickPendingIntent(R.id.notif_text_container, pendingOpenApp);
-        customView.setOnClickPendingIntent(R.id.notif_icon, pendingOpenApp);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
