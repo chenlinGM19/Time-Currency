@@ -7,14 +7,39 @@ public class WidgetSettingsHelper {
     private static final String PREFS_NAME = "com.timecurrency.app.WidgetPrefs";
     private static final String PREF_PREFIX_KEY = "appwidget_";
 
-    // Layout Modes:
-    // 0: Default (Row)
-    // 1: Sidebar Right (Amount Left, Buttons Right Col)
-    // 2: Sidebar Left (Amount Right, Buttons Left Col)
-    // 3: Vertical Stack (Plus, Amount, Minus)
-    // 4: Bar Bottom (Amount Top, Buttons Row Bottom)
-    // 5: Bar Top (Amount Bottom, Buttons Row Top)
-    // 6: Diagonal (Minus Bottom-Left, Plus Top-Right, Amount Center)
+    // Background Type: 0 = Color, 1 = Image
+    public static void saveBackgroundType(Context context, int appWidgetId, int type) {
+        SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0).edit();
+        prefs.putInt(PREF_PREFIX_KEY + appWidgetId + "_bg_type", type);
+        prefs.apply();
+    }
+
+    public static int loadBackgroundType(Context context, int appWidgetId) {
+        SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0);
+        return prefs.getInt(PREF_PREFIX_KEY + appWidgetId + "_bg_type", 0); // Default Color
+    }
+
+    // X Offset (dp)
+    public static void saveXOffset(Context context, int appWidgetId, int xOffset) {
+        SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0).edit();
+        prefs.putInt(PREF_PREFIX_KEY + appWidgetId + "_offset_x", xOffset);
+        prefs.apply();
+    }
+
+    public static int loadXOffset(Context context, int appWidgetId) {
+        return context.getSharedPreferences(PREFS_NAME, 0).getInt(PREF_PREFIX_KEY + appWidgetId + "_offset_x", 0);
+    }
+
+    // Y Offset (dp)
+    public static void saveYOffset(Context context, int appWidgetId, int yOffset) {
+        SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0).edit();
+        prefs.putInt(PREF_PREFIX_KEY + appWidgetId + "_offset_y", yOffset);
+        prefs.apply();
+    }
+
+    public static int loadYOffset(Context context, int appWidgetId) {
+        return context.getSharedPreferences(PREFS_NAME, 0).getInt(PREF_PREFIX_KEY + appWidgetId + "_offset_y", 0);
+    }
 
     public static void saveStyle(Context context, int appWidgetId, int style) {
         SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0).edit();
@@ -24,18 +49,7 @@ public class WidgetSettingsHelper {
 
     public static int loadStyle(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
-        return prefs.getInt(PREF_PREFIX_KEY + appWidgetId + "_style", 0); // 0 is Classic
-    }
-    
-    public static void saveLayoutMode(Context context, int appWidgetId, int mode) {
-        SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0).edit();
-        prefs.putInt(PREF_PREFIX_KEY + appWidgetId + "_layout", mode);
-        prefs.apply();
-    }
-
-    public static int loadLayoutMode(Context context, int appWidgetId) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
-        return prefs.getInt(PREF_PREFIX_KEY + appWidgetId + "_layout", 0); // 0 is Default
+        return prefs.getInt(PREF_PREFIX_KEY + appWidgetId + "_style", 0);
     }
 
     public static void saveTransparency(Context context, int appWidgetId, int alpha) {
@@ -68,13 +82,15 @@ public class WidgetSettingsHelper {
 
     public static int loadCornerRadius(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
-        return prefs.getInt(PREF_PREFIX_KEY + appWidgetId + "_radius", 16); // Default 16dp
+        return prefs.getInt(PREF_PREFIX_KEY + appWidgetId + "_radius", 16); 
     }
 
     public static void deletePrefs(Context context, int appWidgetId) {
         SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0).edit();
+        prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_bg_type");
+        prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_offset_x");
+        prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_offset_y");
         prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_style");
-        prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_layout");
         prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_alpha");
         prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_image");
         prefs.remove(PREF_PREFIX_KEY + appWidgetId + "_radius");

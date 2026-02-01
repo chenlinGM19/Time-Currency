@@ -1,17 +1,20 @@
 package com.timecurrency.app;
 
-import android.app.AppOpsManager;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewOutlineProvider;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.Toast;
@@ -21,6 +24,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
+import com.google.android.material.button.MaterialButtonToggleGroup;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -28,16 +33,25 @@ import java.io.InputStream;
 public class WidgetConfigActivity extends AppCompatActivity {
 
     private int appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
-    private ImageView previewImage;
-    private String selectedImagePath = null;
     
     // UI References
+    private View previewContainer;
+    private View previewContent;
+    private ImageView previewBgImage;
+    private View previewBgColor;
+    
+    private MaterialButtonToggleGroup toggleBgType;
+    private LinearLayout sectionColor;
+    private LinearLayout sectionImage;
     private RadioGroup rgStyles;
-    private RadioGroup rgLayouts;
     private SeekBar seekBarTransparency;
     private SeekBar seekBarRadius;
     
-    private Bitmap currentSourceBitmap = null;
+    private String selectedImagePath = null;
+    private int currentOffsetX = 0;
+    private int currentOffsetY = 0;
+    
+    private float dX, dY; // For dragging
     
     private final ActivityResultLauncher<String> pickImage = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -51,18 +65,13 @@ public class WidgetConfigActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        // Edge to Edge
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
 
         setContentView(R.layout.activity_widget_config);
-
-        // Set the result to CANCELED initially
         setResult(RESULT_CANCELED);
 
-        // Find the widget id from the intent.
         Intent intent = getIntent();
         Bundle extras = intent.getExtras();
         if (extras != null) {
@@ -75,184 +84,237 @@ public class WidgetConfigActivity extends AppCompatActivity {
             return;
         }
 
+        initViews();
+        loadSavedSettings();
+        setupDragListener();
+        updateUIState();
+    }
+    
+    private void initViews() {
+        previewContainer = findViewById(R.id.previewContainer);
+        previewContent = findViewById(R.id.previewContent);
+        previewBgImage = findViewById(R.id.previewBgImage);
+        previewBgColor = findViewById(R.id.previewBgColor);
+        
+        toggleBgType = findViewById(R.id.toggleBgType);
+        sectionColor = findViewById(R.id.sectionColor);
+        sectionImage = findViewById(R.id.sectionImage);
+        
         rgStyles = findViewById(R.id.rgStyles);
-        rgLayouts = findViewById(R.id.rgLayouts);
         seekBarTransparency = findViewById(R.id.seekBarTransparency);
         seekBarRadius = findViewById(R.id.seekBarRadius);
+        
         Button btnSelectImage = findViewById(R.id.btnSelectImage);
         Button btnClearImage = findViewById(R.id.btnClearImage);
         Button btnSave = findViewById(R.id.btnSaveWidget);
-        previewImage = findViewById(R.id.previewImage);
         
-        // Load existing settings if any (for re-configuration)
-        loadSavedSettings();
-        
-        // Initial refresh
-        refreshPreview();
-
         btnSelectImage.setOnClickListener(v -> pickImage.launch("image/*"));
-        
         btnClearImage.setOnClickListener(v -> {
             selectedImagePath = null;
-            currentSourceBitmap = null;
-            refreshPreview();
+            previewBgImage.setImageDrawable(null);
         });
         
-        seekBarRadius.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                refreshPreview();
-            }
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+        toggleBgType.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) updateUIState();
         });
-
-        btnSave.setOnClickListener(v -> {
-            final Context context = WidgetConfigActivity.this;
-
-            // 1. Save Style
-            int selectedStyleId = rgStyles.getCheckedRadioButtonId();
-            int style = 0;
-            if (selectedStyleId == R.id.style1) style = 0;
-            else if (selectedStyleId == R.id.style2) style = 1;
-            else if (selectedStyleId == R.id.style3) style = 2;
-            else if (selectedStyleId == R.id.style4) style = 3;
-            else if (selectedStyleId == R.id.style5) style = 4;
-            else if (selectedStyleId == R.id.style6) style = 5;
-            WidgetSettingsHelper.saveStyle(context, appWidgetId, style);
-
-            // 2. Save Layout Mode
-            int selectedLayoutId = rgLayouts.getCheckedRadioButtonId();
-            int layoutMode = 0;
-            if (selectedLayoutId == R.id.layoutDefault) layoutMode = 0;
-            else if (selectedLayoutId == R.id.layoutSidebarRight) layoutMode = 1;
-            else if (selectedLayoutId == R.id.layoutSidebarLeft) layoutMode = 2;
-            else if (selectedLayoutId == R.id.layoutVertical) layoutMode = 3;
-            else if (selectedLayoutId == R.id.layoutBarBottom) layoutMode = 4;
-            else if (selectedLayoutId == R.id.layoutBarTop) layoutMode = 5;
-            else if (selectedLayoutId == R.id.layoutDiagonal) layoutMode = 6;
-            WidgetSettingsHelper.saveLayoutMode(context, appWidgetId, layoutMode);
-
-            // 3. Save Transparency
-            WidgetSettingsHelper.saveTransparency(context, appWidgetId, seekBarTransparency.getProgress());
-            
-            // 4. Save Corner Radius
-            WidgetSettingsHelper.saveCornerRadius(context, appWidgetId, seekBarRadius.getProgress());
-            
-            // 5. Save Image Path
-            WidgetSettingsHelper.saveImagePath(context, appWidgetId, selectedImagePath);
-
-            // 6. Update the widget
-            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-            CurrencyWidgetProvider.updateAppWidget(context, appWidgetManager, appWidgetId);
-
-            // 7. Make sure we pass back the original appWidgetId
-            Intent resultValue = new Intent();
-            resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-            setResult(RESULT_OK, resultValue);
-            finish();
+        
+        rgStyles.setOnCheckedChangeListener((g, i) -> refreshPreviewColor());
+        seekBarTransparency.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean u) { refreshPreviewColor(); }
         });
+        
+        seekBarRadius.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean u) { refreshPreviewRadius(); }
+        });
+        
+        btnSave.setOnClickListener(v -> saveAndFinish());
     }
     
+    private void setupDragListener() {
+        previewContent.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dX = view.getX() - event.getRawX();
+                        dY = view.getY() - event.getRawY();
+                        return true;
+                        
+                    case MotionEvent.ACTION_MOVE:
+                        float newX = event.getRawX() + dX;
+                        float newY = event.getRawY() + dY;
+                        
+                        // Constrain dragging roughly within container
+                        float limitX = previewContainer.getWidth() - view.getWidth();
+                        float limitY = previewContainer.getHeight() - view.getHeight();
+                        
+                        if (newX < -view.getWidth()/2) newX = -view.getWidth()/2;
+                        if (newX > previewContainer.getWidth() - view.getWidth()/2) newX = previewContainer.getWidth() - view.getWidth()/2;
+                        if (newY < -view.getHeight()/2) newY = -view.getHeight()/2;
+                        if (newY > previewContainer.getHeight() - view.getHeight()/2) newY = previewContainer.getHeight() - view.getHeight()/2;
+
+                        view.setX(newX);
+                        view.setY(newY);
+                        
+                        // Calculate offset from center for saving
+                        float centerX = previewContainer.getWidth() / 2f;
+                        float centerY = previewContainer.getHeight() / 2f;
+                        float viewCenterX = newX + view.getWidth() / 2f;
+                        float viewCenterY = newY + view.getHeight() / 2f;
+                        
+                        // 1dp factor approx
+                        float density = getResources().getDisplayMetrics().density;
+                        currentOffsetX = (int) ((viewCenterX - centerX) / density);
+                        currentOffsetY = (int) ((viewCenterY - centerY) / density);
+                        
+                        return true;
+                        
+                    default:
+                        return false;
+                }
+            }
+        });
+    }
+
     private void loadSavedSettings() {
-        // Style
+        int type = WidgetSettingsHelper.loadBackgroundType(this, appWidgetId);
+        toggleBgType.check(type == 1 ? R.id.btnTypeImage : R.id.btnTypeColor);
+        
         int style = WidgetSettingsHelper.loadStyle(this, appWidgetId);
-        int styleId = R.id.style1; // Default
-        switch (style) {
-            case 0: styleId = R.id.style1; break;
-            case 1: styleId = R.id.style2; break;
-            case 2: styleId = R.id.style3; break;
-            case 3: styleId = R.id.style4; break;
-            case 4: styleId = R.id.style5; break;
-            case 5: styleId = R.id.style6; break;
-        }
-        rgStyles.check(styleId);
-
-        // Layout
-        int layout = WidgetSettingsHelper.loadLayoutMode(this, appWidgetId);
-        int layoutId = R.id.layoutDefault; // Default
-        switch (layout) {
-            case 0: layoutId = R.id.layoutDefault; break;
-            case 1: layoutId = R.id.layoutSidebarRight; break;
-            case 2: layoutId = R.id.layoutSidebarLeft; break;
-            case 3: layoutId = R.id.layoutVertical; break;
-            case 4: layoutId = R.id.layoutBarBottom; break;
-            case 5: layoutId = R.id.layoutBarTop; break;
-            case 6: layoutId = R.id.layoutDiagonal; break;
-        }
-        rgLayouts.check(layoutId);
-
-        // SeekBars
+        if (style == 0) rgStyles.check(R.id.style1);
+        else if (style == 1) rgStyles.check(R.id.style2);
+        else if (style == 2) rgStyles.check(R.id.style3);
+        else if (style == 4) rgStyles.check(R.id.style5);
+        
         seekBarTransparency.setProgress(WidgetSettingsHelper.loadTransparency(this, appWidgetId));
         seekBarRadius.setProgress(WidgetSettingsHelper.loadCornerRadius(this, appWidgetId));
-
-        // Image
+        
         selectedImagePath = WidgetSettingsHelper.loadImagePath(this, appWidgetId);
         if (selectedImagePath != null) {
-            currentSourceBitmap = BitmapFactory.decodeFile(selectedImagePath);
+            Bitmap b = BitmapFactory.decodeFile(selectedImagePath);
+            previewBgImage.setImageBitmap(b);
+        }
+        
+        currentOffsetX = WidgetSettingsHelper.loadXOffset(this, appWidgetId);
+        currentOffsetY = WidgetSettingsHelper.loadYOffset(this, appWidgetId);
+        
+        // Apply offsets to preview immediately (need to wait for layout pass usually, but post helps)
+        previewContainer.post(() -> {
+            float density = getResources().getDisplayMetrics().density;
+            float centerX = previewContainer.getWidth() / 2f;
+            float centerY = previewContainer.getHeight() / 2f;
+            
+            // Re-center first (default layout puts it at 0,0 relative to parent if FrameLayout default, 
+            // but we used LayoutGravity center in XML)
+            // Actually, FrameLayout with layout_gravity=center puts it in center.
+            // setTranslation moves it from that spot.
+            
+            previewContent.setTranslationX(currentOffsetX * density);
+            previewContent.setTranslationY(currentOffsetY * density);
+        });
+        
+        refreshPreviewColor();
+        refreshPreviewRadius();
+    }
+    
+    private void updateUIState() {
+        boolean isImage = toggleBgType.getCheckedButtonId() == R.id.btnTypeImage;
+        if (isImage) {
+            sectionColor.setVisibility(View.GONE);
+            sectionImage.setVisibility(View.VISIBLE);
+            previewBgColor.setVisibility(View.GONE);
+            previewBgImage.setVisibility(View.VISIBLE);
+        } else {
+            sectionColor.setVisibility(View.VISIBLE);
+            sectionImage.setVisibility(View.GONE);
+            previewBgColor.setVisibility(View.VISIBLE);
+            previewBgImage.setVisibility(View.GONE);
         }
     }
     
-    private void refreshPreview() {
-        if (previewImage == null) return;
+    private void refreshPreviewColor() {
+        int alpha = seekBarTransparency.getProgress();
+        int color = Color.BLACK;
         
-        int w = previewImage.getWidth();
-        int h = previewImage.getHeight();
-        if (w == 0) w = 800; // fallback estimate
-        if (h == 0) h = 400;
+        int id = rgStyles.getCheckedRadioButtonId();
+        if (id == R.id.style1) color = Color.parseColor("#212121");
+        else if (id == R.id.style2) color = Color.WHITE;
+        else if (id == R.id.style3) color = Color.parseColor("#03DAC6");
+        else if (id == R.id.style5) color = Color.parseColor("#000000");
         
+        int finalColor = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
+        previewBgColor.setBackgroundColor(finalColor);
+    }
+    
+    private void refreshPreviewRadius() {
         float radius = seekBarRadius.getProgress() * getResources().getDisplayMetrics().density;
-        
-        // Generate the exact same bitmap the widget will use
-        Bitmap preview = CurrencyWidgetProvider.createSmartRoundedBitmap(currentSourceBitmap, w, h, radius);
-        
-        previewImage.setImageBitmap(preview);
-        previewImage.setBackground(null);
+        previewContainer.setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+            }
+        });
     }
 
+    private void saveAndFinish() {
+        int bgType = (toggleBgType.getCheckedButtonId() == R.id.btnTypeImage) ? 1 : 0;
+        WidgetSettingsHelper.saveBackgroundType(this, appWidgetId, bgType);
+        
+        int style = 0;
+        int styleId = rgStyles.getCheckedRadioButtonId();
+        if (styleId == R.id.style2) style = 1;
+        else if (styleId == R.id.style3) style = 2;
+        else if (styleId == R.id.style5) style = 4;
+        WidgetSettingsHelper.saveStyle(this, appWidgetId, style);
+        
+        WidgetSettingsHelper.saveTransparency(this, appWidgetId, seekBarTransparency.getProgress());
+        WidgetSettingsHelper.saveCornerRadius(this, appWidgetId, seekBarRadius.getProgress());
+        WidgetSettingsHelper.saveImagePath(this, appWidgetId, selectedImagePath);
+        
+        // Save offsets
+        WidgetSettingsHelper.saveXOffset(this, appWidgetId, currentOffsetX);
+        WidgetSettingsHelper.saveYOffset(this, appWidgetId, currentOffsetY);
+
+        // Update
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+        CurrencyWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId);
+
+        Intent resultValue = new Intent();
+        resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+        setResult(RESULT_OK, resultValue);
+        finish();
+    }
+    
     private void saveImageLocally(Uri sourceUri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(sourceUri);
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-            
             if (bitmap == null) return;
             
-            // Adaptive scaling logic: Fit within 1024x1024 without distorting aspect ratio
-            int originalWidth = bitmap.getWidth();
-            int originalHeight = bitmap.getHeight();
-            int maxDimension = 1024;
-            
-            int newWidth = originalWidth;
-            int newHeight = originalHeight;
-            
-            if (originalWidth > maxDimension || originalHeight > maxDimension) {
-                float aspectRatio = (float) originalWidth / originalHeight;
-                if (originalWidth > originalHeight) {
-                    newWidth = maxDimension;
-                    newHeight = Math.round(maxDimension / aspectRatio);
-                } else {
-                    newHeight = maxDimension;
-                    newWidth = Math.round(maxDimension * aspectRatio);
-                }
+            // Limit size
+            int maxDim = 1024;
+            if (bitmap.getWidth() > maxDim || bitmap.getHeight() > maxDim) {
+                float ratio = (float)bitmap.getWidth()/bitmap.getHeight();
+                int w = (ratio > 1) ? maxDim : (int)(maxDim*ratio);
+                int h = (ratio > 1) ? (int)(maxDim/ratio) : maxDim;
+                bitmap = Bitmap.createScaledBitmap(bitmap, w, h, true);
             }
-            
-            Bitmap scaled = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
             
             File file = new File(getFilesDir(), "widget_bg_" + appWidgetId + ".png");
             FileOutputStream out = new FileOutputStream(file);
-            scaled.compress(Bitmap.CompressFormat.PNG, 90, out);
-            out.flush();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
             out.close();
             
             selectedImagePath = file.getAbsolutePath();
-            currentSourceBitmap = scaled;
-            refreshPreview();
+            previewBgImage.setImageBitmap(bitmap);
             
         } catch (Exception e) {
-            Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
+    }
+    
+    private abstract static class SimpleSeekBarListener implements SeekBar.OnSeekBarChangeListener {
+        @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+        @Override public void onStopTrackingTouch(SeekBar seekBar) {}
     }
 }

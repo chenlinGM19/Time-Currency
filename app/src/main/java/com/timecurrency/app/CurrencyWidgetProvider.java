@@ -8,12 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
-import android.graphics.RectF;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -65,116 +60,93 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         int amount = CurrencyManager.getCurrency(context);
         
         // Load settings
+        int bgType = WidgetSettingsHelper.loadBackgroundType(context, appWidgetId); // 0=Color, 1=Image
         int style = WidgetSettingsHelper.loadStyle(context, appWidgetId);
-        int layoutMode = WidgetSettingsHelper.loadLayoutMode(context, appWidgetId);
         int alpha = WidgetSettingsHelper.loadTransparency(context, appWidgetId);
         String imagePath = WidgetSettingsHelper.loadImagePath(context, appWidgetId);
         int radiusDp = WidgetSettingsHelper.loadCornerRadius(context, appWidgetId);
+        int offsetX = WidgetSettingsHelper.loadXOffset(context, appWidgetId);
+        int offsetY = WidgetSettingsHelper.loadYOffset(context, appWidgetId);
 
-        // Select Layout based on mode
-        int layoutId;
-        switch (layoutMode) {
-            case 1: layoutId = R.layout.widget_layout_sidebar_right; break;
-            case 2: layoutId = R.layout.widget_layout_sidebar_left; break;
-            case 3: layoutId = R.layout.widget_layout_vertical; break;
-            case 4: layoutId = R.layout.widget_layout_bar_bottom; break;
-            case 5: layoutId = R.layout.widget_layout_bar_top; break;
-            case 6: layoutId = R.layout.widget_layout_corners; break;
-            default: layoutId = R.layout.widget_layout; break; // Default Horizontal
-        }
-
-        RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
+        // Always use the unified layout
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
         views.setTextViewText(R.id.widget_amount, String.valueOf(amount));
 
-        // --- Calculate Dimensions for Dynamic Bitmaps ---
-        Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
-        int minWidthDp = 160;
-        int minHeightDp = 80;
-        if (options != null) {
-            minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 160);
-            minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 80);
-        }
-        
-        // Convert DP to PX
-        float density = context.getResources().getDisplayMetrics().density;
-        int widthPx = (int) (minWidthDp * density);
-        int heightPx = (int) (minHeightDp * density);
-        float radiusPx = radiusDp * density;
-        
-        // Safety check for dimensions
-        if (widthPx <= 0) widthPx = 400;
-        if (heightPx <= 0) heightPx = 200;
+        // --- 1. Corner Radius ---
+        // Apply drawable resource to Root. Android 12+ uses clipToOutline="true"
+        int bgRes = getBackgroundResourceForRadius(radiusDp);
+        views.setInt(R.id.widget_root, "setBackgroundResource", bgRes);
 
-        // --- 1. Apply Dynamic Background Overlay (Shape + Radius) ---
-        // We create a white rounded bitmap. The Styles below will Tint it via setColorFilter.
-        // This ensures the color layer also respects the R-radius transparency.
-        Bitmap overlayBitmap = createSmartRoundedBitmap(null, widthPx, heightPx, radiusPx);
-        views.setImageViewBitmap(R.id.widget_bg_overlay, overlayBitmap);
-        views.setInt(R.id.widget_bg_overlay, "setAlpha", alpha);
-
-        // --- 2. Apply Background Image ---
-        if (imagePath != null) {
+        // --- 2. Background Logic (Exclusive) ---
+        if (bgType == 1 && imagePath != null) {
+            // IMAGE MODE
             Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
             if (bitmap != null) {
-                // Crop and Round the user image to match the overlay perfectly
-                Bitmap roundedImage = createSmartRoundedBitmap(bitmap, widthPx, heightPx, radiusPx);
-                views.setImageViewBitmap(R.id.widget_bg_image, roundedImage);
+                views.setImageViewBitmap(R.id.widget_bg_image, bitmap);
                 views.setViewVisibility(R.id.widget_bg_image, View.VISIBLE);
+                views.setViewVisibility(R.id.widget_bg_color, View.GONE);
             } else {
+                // Fallback if image load failed
                 views.setViewVisibility(R.id.widget_bg_image, View.GONE);
+                views.setViewVisibility(R.id.widget_bg_color, View.VISIBLE);
+                applyColorBackground(views, style, alpha);
             }
         } else {
+            // COLOR MODE
             views.setViewVisibility(R.id.widget_bg_image, View.GONE);
+            views.setViewVisibility(R.id.widget_bg_color, View.VISIBLE);
+            applyColorBackground(views, style, alpha);
         }
 
-        // --- 3. Apply Styles ---
-        // Reset defaults
-        views.setViewVisibility(R.id.widget_btn_minus, View.VISIBLE);
-        views.setViewVisibility(R.id.widget_btn_plus, View.VISIBLE);
-        views.setViewVisibility(R.id.widget_click_overlay, View.GONE);
-        views.setTextColor(R.id.widget_amount, Color.WHITE);
-        views.setTextColor(R.id.widget_btn_plus, Color.WHITE);
-        views.setTextColor(R.id.widget_btn_minus, Color.WHITE);
-        views.setInt(R.id.widget_btn_config, "setColorFilter", Color.WHITE);
+        // --- 3. Style (Text Colors) ---
+        applyTextStyle(views, style);
+
+        // --- 4. Layout Positioning (Offsets) ---
+        // We use setViewPadding on the content container to shift the center of the LinearLayout.
+        float density = context.getResources().getDisplayMetrics().density;
+        int pxX = (int) (offsetX * density);
+        int pxY = (int) (offsetY * density);
         
-        // Default text size
-        views.setFloat(R.id.widget_amount, "setTextSize", 24f);
+        // Logic: To move content Right (+X), add Padding Left. To move Down (+Y), add Padding Top.
+        // Assuming the container is sized match_parent/match_parent.
+        // If pxX is negative (Left), add Padding Right.
+        
+        int padLeft = (pxX > 0) ? pxX : 0;
+        int padRight = (pxX < 0) ? -pxX : 0;
+        int padTop = (pxY > 0) ? pxY : 0;
+        int padBottom = (pxY < 0) ? -pxY : 0;
+        
+        views.setViewPadding(R.id.widget_content_container, padLeft, padTop, padRight, padBottom);
 
-        switch (style) {
-            case 0: // Classic (Dark)
-                // Now using dynamic white bitmap, so we must tint it Dark Gray.
-                views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.parseColor("#212121"));
-                break;
-            case 1: // Light Theme
-                views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.WHITE);
-                views.setTextColor(R.id.widget_amount, Color.BLACK);
-                views.setTextColor(R.id.widget_btn_plus, Color.BLACK);
-                views.setTextColor(R.id.widget_btn_minus, Color.BLACK);
-                views.setInt(R.id.widget_btn_config, "setColorFilter", Color.BLACK);
-                break;
-            case 2: // Accent Color
-                views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.parseColor("#03DAC6"));
-                views.setTextColor(R.id.widget_amount, Color.BLACK);
-                views.setInt(R.id.widget_btn_config, "setColorFilter", Color.BLACK);
-                break;
-            case 3: // Minimal (Text Only)
-                views.setViewVisibility(R.id.widget_btn_minus, View.GONE);
-                views.setViewVisibility(R.id.widget_btn_plus, View.GONE);
-                views.setViewVisibility(R.id.widget_click_overlay, View.VISIBLE);
-                // Also tint the bg for consistency, though user might set alpha to 0
-                views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.parseColor("#212121"));
-                break;
-            case 4: // Big Number
-                views.setFloat(R.id.widget_amount, "setTextSize", 48f);
-                views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.BLACK);
-                break;
-            case 5: // Compact (1x1)
-                 views.setFloat(R.id.widget_amount, "setTextSize", 16f);
-                 views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.DKGRAY);
-                break;
-        }
+        // --- 5. Actions ---
+        setupActions(context, views, appWidgetId);
 
-        // --- 4. Setup Actions ---
+        appWidgetManager.updateAppWidget(appWidgetId, views);
+    }
+    
+    private static void applyColorBackground(RemoteViews views, int style, int alpha) {
+        int color = Color.parseColor("#212121"); // Default Dark
+        if (style == 1) color = Color.WHITE;
+        else if (style == 2) color = Color.parseColor("#03DAC6");
+        else if (style == 4) color = Color.BLACK;
+
+        // Apply alpha to the base color
+        int finalColor = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
+        views.setInt(R.id.widget_bg_color, "setBackgroundColor", finalColor);
+    }
+    
+    private static void applyTextStyle(RemoteViews views, int style) {
+        int textColor = Color.WHITE;
+        if (style == 1) textColor = Color.BLACK; // Light theme needs black text
+        else if (style == 2) textColor = Color.BLACK; // Accent usually needs black text
+        
+        views.setTextColor(R.id.widget_amount, textColor);
+        views.setTextColor(R.id.widget_btn_plus, textColor);
+        views.setTextColor(R.id.widget_btn_minus, textColor);
+        views.setInt(R.id.widget_btn_config, "setColorFilter", textColor);
+    }
+
+    private static void setupActions(Context context, RemoteViews views, int appWidgetId) {
         Intent incIntent = new Intent(context, CurrencyWidgetProvider.class);
         incIntent.setAction(ACTION_INCREMENT);
         PendingIntent pendingInc = PendingIntent.getBroadcast(context, 100, incIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
@@ -185,71 +157,24 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         PendingIntent pendingDec = PendingIntent.getBroadcast(context, 101, decIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         views.setOnClickPendingIntent(R.id.widget_btn_minus, pendingDec);
 
-        // Config Button (Open Settings for THIS widget)
         Intent configIntent = new Intent(context, WidgetConfigActivity.class);
         configIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         configIntent.setData(Uri.parse(configIntent.toUri(Intent.URI_INTENT_SCHEME)));
         PendingIntent pendingConfig = PendingIntent.getActivity(context, appWidgetId, configIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         views.setOnClickPendingIntent(R.id.widget_btn_config, pendingConfig);
 
-        // Open App
         Intent openIntent = new Intent(context, MainActivity.class);
         PendingIntent pendingOpen = PendingIntent.getActivity(context, 102, openIntent, PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.widget_amount, pendingOpen);
-        views.setOnClickPendingIntent(R.id.widget_click_overlay, pendingOpen);
-
-        appWidgetManager.updateAppWidget(appWidgetId, views);
     }
-    
-    /**
-     * Creates a bitmap of dimensions (targetWidth, targetHeight).
-     * 1. Clears canvas to TRANSPARENT.
-     * 2. Draws a rounded mask.
-     * 3. Uses SRC_IN to composite the image or solid white into the mask.
-     * This guarantees transparency outside the R-radius.
-     */
-    public static Bitmap createSmartRoundedBitmap(Bitmap source, int targetWidth, int targetHeight, float radiusPx) {
-        Bitmap output = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(output);
-        Paint paint = new Paint();
-        paint.setAntiAlias(true);
-        
-        RectF rectF = new RectF(0, 0, targetWidth, targetHeight);
-        
-        // 1. Start with completely transparent canvas
-        canvas.drawColor(Color.TRANSPARENT);
-        
-        // 2. Draw rounded mask (Opaque solid)
-        paint.setColor(0xFF000000); // Color doesn't matter for the mask, just alpha
-        canvas.drawRoundRect(rectF, radiusPx, radiusPx, paint);
-        
-        // 3. Composite Source
-        paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
-        
-        if (source != null) {
-            // Center Crop Logic
-            float scale;
-            float dx = 0, dy = 0;
-            
-            if (source.getWidth() * targetHeight > targetWidth * source.getHeight()) {
-                scale = (float) targetHeight / (float) source.getHeight();
-                dx = (targetWidth - source.getWidth() * scale) * 0.5f;
-            } else {
-                scale = (float) targetWidth / (float) source.getWidth();
-                dy = (targetHeight - source.getHeight() * scale) * 0.5f;
-            }
-            
-            android.graphics.Matrix matrix = new android.graphics.Matrix();
-            matrix.setScale(scale, scale);
-            matrix.postTranslate((int) (dx + 0.5f), (int) (dy + 0.5f));
-            
-            canvas.drawBitmap(source, matrix, paint);
-        } else {
-            // Fill with White so it can be tinted by setColorFilter in RemoteViews
-            paint.setColor(0xFFFFFFFF);
-            canvas.drawRect(rectF, paint);
-        }
-        
-        return output;
+
+    private static int getBackgroundResourceForRadius(int radiusDp) {
+        if (radiusDp <= 4) return R.drawable.rounded_0dp;
+        if (radiusDp <= 12) return R.drawable.rounded_8dp;
+        if (radiusDp <= 20) return R.drawable.rounded_16dp;
+        if (radiusDp <= 28) return R.drawable.rounded_24dp;
+        if (radiusDp <= 36) return R.drawable.rounded_32dp;
+        if (radiusDp <= 48) return R.drawable.rounded_48dp;
+        return R.drawable.rounded_64dp;
     }
 }

@@ -3,70 +3,82 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="0dp">
+    android:padding="0dp"
+    android:clipToOutline="true"
+    android:background="@drawable/rounded_16dp">
 
-    <!-- Background Image Layer -->
+    <!-- 1. IMAGE Background (Exclusive) -->
     <ImageView
         android:id="@+id/widget_bg_image"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
+        android:visibility="gone"
         android:src="@null" />
 
-    <!-- Background Color/Transparency Layer -->
-    <ImageView
-        android:id="@+id/widget_bg_overlay"
+    <!-- 2. COLOR Background (Exclusive) -->
+    <!-- We use this View to show solid color + alpha -->
+    <View
+        android:id="@+id/widget_bg_color"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@null" />
+        android:background="#212121"
+        android:visibility="visible"/>
 
-    <!-- Content Layer -->
-    <LinearLayout
+    <!-- 3. Content Container -->
+    <!-- Gravity Center. We adjust offsets by setting padding on this container in code. -->
+    <FrameLayout
         android:id="@+id/widget_content_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="4dp">
+        android:layout_height="match_parent">
 
-        <Button
-            android:id="@+id/widget_btn_minus"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:text="-"
-            android:textSize="18sp"
-            android:textColor="#FFFFFF"
-            android:background="@android:color/transparent"
-            android:gravity="center" />
-
-        <TextView
-            android:id="@+id/widget_amount"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_gravity="center"
+            android:orientation="horizontal"
             android:gravity="center"
-            android:text="0"
-            android:textColor="#FFFFFF"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:shadowColor="#000000"
-            android:shadowDx="1"
-            android:shadowDy="1"
-            android:shadowRadius="2"/>
+            android:padding="4dp">
 
-        <Button
-            android:id="@+id/widget_btn_plus"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:text="+"
-            android:textSize="18sp"
-            android:textColor="#FFFFFF"
-            android:background="@android:color/transparent"
-            android:gravity="center" />
+            <Button
+                android:id="@+id/widget_btn_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@android:color/transparent"
+                android:gravity="center" />
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/widget_amount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="0"
+                android:textColor="#FFFFFF"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:shadowColor="#000000"
+                android:shadowDx="1"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                android:layout_marginHorizontal="8dp"/>
+
+            <Button
+                android:id="@+id/widget_btn_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@android:color/transparent"
+                android:gravity="center" />
+
+        </LinearLayout>
+    </FrameLayout>
     
-    <!-- Clickable overlay to open app -->
+    <!-- Clickable overlay to open app (if needed) -->
     <LinearLayout 
          android:id="@+id/widget_click_overlay"
          android:layout_width="match_parent"
@@ -74,14 +86,14 @@
          android:orientation="vertical"
          android:visibility="gone"/>
          
-    <!-- Config Button (Top Right) -->
+    <!-- Config Button (Always Top Right) -->
     <ImageButton
         android:id="@+id/widget_btn_config"
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:layout_gravity="top|end"
-        android:layout_marginTop="2dp"
-        android:layout_marginEnd="2dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="4dp"
         android:src="@drawable/ic_settings"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         android:scaleType="fitCenter"
