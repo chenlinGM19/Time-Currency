@@ -3,7 +3,6 @@ package com.timecurrency.app;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Build;
 
 public class CurrencyManager {
 
@@ -24,30 +23,18 @@ public class CurrencyManager {
         
         prefs.edit().putInt(KEY_AMOUNT, newValue).apply();
 
-        // Notify Service to update Notification
-        Intent serviceIntent = new Intent(context, NotificationService.class);
-        serviceIntent.setAction(NotificationService.ACTION_REFRESH);
-        
-        // Wrap in try-catch to prevent ForegroundServiceStartNotAllowedException on Android 12+
-        // when called from background (e.g. Widget)
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent);
-            } else {
-                context.startService(serviceIntent);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Notify Widget to update
+        // 1. Notify Widget
         Intent widgetIntent = new Intent(context, CurrencyWidgetProvider.class);
         widgetIntent.setAction("android.appwidget.action.APPWIDGET_UPDATE");
         context.sendBroadcast(widgetIntent);
         
-        // Notify Activity with the new value directly for instant update
+        // 2. Notify Activity UI
         Intent broadcastIntent = new Intent(ACTION_UPDATE_UI);
         broadcastIntent.putExtra(EXTRA_AMOUNT, newValue);
         context.sendBroadcast(broadcastIntent);
+
+        // 3. Notify Notification (Directly, no Service start)
+        // This is safe to call from background (Receiver) or foreground (Activity)
+        NotificationService.refreshNotification(context);
     }
 }

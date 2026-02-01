@@ -45,21 +45,24 @@ public class MainActivity extends AppCompatActivity {
         btnMinus.setOnClickListener(v -> updateCurrencyOptimistic(-1));
 
         checkPermissions();
-        startForegroundService();
+        // Only start service if we have permission. 
+        // Logic handled in checkPermissions or immediately if below Android 13.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || 
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            startForegroundServiceSafe();
+        }
+        
         refreshUI();
     }
     
     private void updateCurrencyOptimistic(int delta) {
-        // 1. Update UI immediately for responsiveness
         try {
             String currentStr = tvAmount.getText().toString();
             int current = Integer.parseInt(currentStr);
             tvAmount.setText(String.valueOf(current + delta));
         } catch (Exception e) {
-            // Ignore parse errors
+            // Ignore
         }
-        
-        // 2. Commit to storage and broadcast
         CurrencyManager.updateCurrency(this, delta);
     }
 
@@ -67,7 +70,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         IntentFilter filter = new IntentFilter(CurrencyManager.ACTION_UPDATE_UI);
-        // Correct flag handling for Android 13/14+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
@@ -82,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             unregisterReceiver(updateReceiver);
         } catch (Exception e) {
-            // Receiver not registered
+            // Ignore
         }
     }
 
@@ -91,9 +93,9 @@ public class MainActivity extends AppCompatActivity {
         tvAmount.setText(String.valueOf(amount));
     }
 
-    private void startForegroundService() {
-        Intent serviceIntent = new Intent(this, NotificationService.class);
+    private void startForegroundServiceSafe() {
         try {
+            Intent serviceIntent = new Intent(this, NotificationService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(serviceIntent);
             } else {
@@ -116,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 101 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startForegroundService();
+            startForegroundServiceSafe();
         }
     }
 }
