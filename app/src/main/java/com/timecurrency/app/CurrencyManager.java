@@ -9,6 +9,7 @@ public class CurrencyManager {
     private static final String PREF_NAME = "TimeCurrencyPrefs";
     private static final String KEY_AMOUNT = "amount";
     public static final String ACTION_UPDATE_UI = "com.timecurrency.app.ACTION_UPDATE_UI";
+    public static final String EXTRA_AMOUNT = "com.timecurrency.app.EXTRA_AMOUNT";
 
     public static int getCurrency(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -33,8 +34,9 @@ public class CurrencyManager {
         // We trigger a manual update broadcast for the widget provider
         context.sendBroadcast(widgetIntent);
         
-        // Notify Activity
+        // Notify Activity with the new value directly for instant update
         Intent broadcastIntent = new Intent(ACTION_UPDATE_UI);
+        broadcastIntent.putExtra(EXTRA_AMOUNT, newValue);
         context.sendBroadcast(broadcastIntent);
     }
 }

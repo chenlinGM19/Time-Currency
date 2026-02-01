@@ -23,7 +23,13 @@ public class MainActivity extends AppCompatActivity {
     private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            refreshUI();
+            // Check if the intent contains the value directly for instant update
+            if (intent.hasExtra(CurrencyManager.EXTRA_AMOUNT)) {
+                int amount = intent.getIntExtra(CurrencyManager.EXTRA_AMOUNT, 0);
+                tvAmount.setText(String.valueOf(amount));
+            } else {
+                refreshUI();
+            }
         }
     };
 

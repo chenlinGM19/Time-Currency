@@ -9,7 +9,7 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
-import android.widget.RemoteViews;
+import android.support.v4.media.session.MediaSessionCompat;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -19,11 +19,24 @@ public class NotificationService extends Service {
     public static final String ACTION_REFRESH = "ACTION_REFRESH";
     private static final String CHANNEL_ID = "TimeCurrencyChannel";
     private static final int NOTIFICATION_ID = 1;
+    
+    private MediaSessionCompat mediaSession;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        // Initialize MediaSession to allow MediaStyle notifications to work correctly on lock screen
+        mediaSession = new MediaSessionCompat(this, "TimeCurrencySession");
+        mediaSession.setActive(true);
         createNotificationChannel();
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mediaSession != null) {
+            mediaSession.release();
+        }
     }
 
     @Override
@@ -58,7 +71,7 @@ public class NotificationService extends Service {
         decIntent.setAction("DECREMENT");
         PendingIntent pendingDec = PendingIntent.getService(this, 2, decIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        // Using standard Notification style for better compatibility, but updating text
+        // Using MediaStyle to mimic music player controls on lock screen
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Time Currency")
                 .setContentText("Total: " + amount)
@@ -67,8 +80,12 @@ public class NotificationService extends Service {
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Show on lock screen
+                // Add actions: Index 0 is Minus, Index 1 is Plus
                 .addAction(R.drawable.ic_minus, "-1", pendingDec)
                 .addAction(R.drawable.ic_plus, "+1", pendingInc)
+                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                        .setShowActionsInCompactView(0, 1) // Show both buttons in compact view
+                        .setMediaSession(mediaSession.getSessionToken()))
                 .setPriority(NotificationCompat.PRIORITY_LOW); // No sound/popup for updates
 
         return builder.build();

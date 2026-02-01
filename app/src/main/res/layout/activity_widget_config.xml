@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Widget Settings"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Style Selection -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Style"
+            android:textColor="#03DAC6"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/rgStyles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="24dp">
+            
+            <RadioButton android:id="@+id/style1" android:text="Classic (Dark)" android:textColor="#FFF" android:checked="true"/>
+            <RadioButton android:id="@+id/style2" android:text="Light Theme" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/style3" android:text="Accent Color" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/style4" android:text="Minimal (Text Only)" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/style5" android:text="Big Number" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/style6" android:text="Compact (1x1)" android:textColor="#FFF"/>
+        </RadioGroup>
+
+        <!-- Transparency -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Background Transparency"
+            android:textColor="#03DAC6"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"/>
+
+        <SeekBar
+            android:id="@+id/seekBarTransparency"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="255"
+            android:progress="255"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Background Image -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Background Image"
+            android:textColor="#03DAC6"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnSelectImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select Image from Gallery"
+            android:layout_marginBottom="8dp"/>
+            
+        <Button
+            android:id="@+id/btnClearImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Clear Image"
+            android:backgroundTint="#CF6679"
+            android:layout_marginBottom="24dp"/>
+
+        <ImageView
+            android:id="@+id/previewImage"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:scaleType="centerCrop"
+            android:background="#333"
+            android:layout_marginBottom="32dp"/>
+
+        <Button
+            android:id="@+id/btnSaveWidget"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Apply Widget"
+            android:backgroundTint="#03DAC6"
+            android:textColor="#000000"
+            android:textStyle="bold"/>
+
+    </LinearLayout>
+</ScrollView>
