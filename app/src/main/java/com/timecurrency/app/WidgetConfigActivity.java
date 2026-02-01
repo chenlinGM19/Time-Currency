@@ -43,8 +43,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_widget_config);
 
-        // Set the result to CANCELED. This will cause the widget host to cancel
-        // out of the widget placement if the user presses the back button.
+        // Set the result to CANCELED.
         setResult(RESULT_CANCELED);
 
         // Find the widget id from the intent.
@@ -55,7 +54,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
                     AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
         }
 
-        // If this activity was started with an intent without an app widget ID, finish with an error.
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish();
             return;
@@ -112,9 +110,28 @@ public class WidgetConfigActivity extends AppCompatActivity {
             InputStream inputStream = getContentResolver().openInputStream(sourceUri);
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
             
-            // Scale down to prevent Memory Exceptions in RemoteViews (Max 1MB usually safe)
-            // A widget background doesn't need to be 4K.
-            Bitmap scaled = Bitmap.createScaledBitmap(bitmap, 800, 600, true);
+            if (bitmap == null) return;
+            
+            // Adaptive scaling logic: Fit within 1024x1024 without distorting aspect ratio
+            int originalWidth = bitmap.getWidth();
+            int originalHeight = bitmap.getHeight();
+            int maxDimension = 1024;
+            
+            int newWidth = originalWidth;
+            int newHeight = originalHeight;
+            
+            if (originalWidth > maxDimension || originalHeight > maxDimension) {
+                float aspectRatio = (float) originalWidth / originalHeight;
+                if (originalWidth > originalHeight) {
+                    newWidth = maxDimension;
+                    newHeight = Math.round(maxDimension / aspectRatio);
+                } else {
+                    newHeight = maxDimension;
+                    newWidth = Math.round(maxDimension * aspectRatio);
+                }
+            }
+            
+            Bitmap scaled = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
             
             File file = new File(getFilesDir(), "widget_bg_" + appWidgetId + ".png");
             FileOutputStream out = new FileOutputStream(file);

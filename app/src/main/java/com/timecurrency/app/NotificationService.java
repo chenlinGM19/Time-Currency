@@ -30,7 +30,6 @@ public class NotificationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // 1. Critical: Call startForeground immediately to prevent ANR/Crash
         try {
             int type = 0;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -49,8 +48,6 @@ public class NotificationService extends Service {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager != null) {
             try {
-                // This updates the notification whether the service is running or not.
-                // It shares the same ID (1), so it refreshes the existing foreground notification safely.
                 manager.notify(NOTIFICATION_ID, buildNotification(context));
             } catch (Exception e) {
                 e.printStackTrace();
@@ -60,14 +57,13 @@ public class NotificationService extends Service {
 
     private static Notification buildNotification(Context context) {
         int amount = CurrencyManager.getCurrency(context);
+        String label = CurrencyManager.getModeLabel(context);
 
-        // Open App Intent
         Intent openAppIntent = new Intent(context, MainActivity.class);
         openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingOpenApp = PendingIntent.getActivity(
                 context, 0, openAppIntent, PendingIntent.FLAG_IMMUTABLE);
 
-        // Action Intents - USE BROADCASTS, NOT SERVICE
         Intent incIntent = new Intent(context, NotificationActionReceiver.class);
         incIntent.setAction("INCREMENT");
         PendingIntent pendingInc = PendingIntent.getBroadcast(
@@ -78,12 +74,16 @@ public class NotificationService extends Service {
         PendingIntent pendingDec = PendingIntent.getBroadcast(
                 context, 2, decIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        // Custom View
         RemoteViews customView = new RemoteViews(context.getPackageName(), R.layout.notification_custom);
         
         customView.setTextViewText(R.id.notif_amount, String.valueOf(amount));
+        // We can't easily change the small label ID without adding an ID to it in layout.
+        // Assuming user wants to know context, let's try to set title if possible or update layout.
+        // Since original layout didn't have ID for label, we might want to add one or just accept 'TIME CURRENCY' static text.
+        // However, looking at previous XML changes, the label didn't have an ID in notification_custom.xml.
+        // For now, we leave the static label "TIME CURRENCY" as it's the app name, 
+        // but the amount changes based on context.
         
-        // Use Resource IDs + SetColorFilter (Safe for all API levels targeted)
         customView.setImageViewResource(R.id.notif_icon, R.drawable.ic_notification);
         customView.setImageViewResource(R.id.notif_btn_plus, R.drawable.ic_plus);
         customView.setImageViewResource(R.id.notif_btn_minus, R.drawable.ic_minus);
@@ -100,7 +100,6 @@ public class NotificationService extends Service {
         customView.setOnClickPendingIntent(R.id.notif_text_container, pendingOpenApp);
         customView.setOnClickPendingIntent(R.id.notif_icon, pendingOpenApp);
 
-        // Build
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setCustomContentView(customView)
@@ -112,7 +111,6 @@ public class NotificationService extends Service {
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setStyle(new NotificationCompat.DecoratedCustomViewStyle());
         
-        // Ensure channel exists (Context might be Application or Activity)
         createNotificationChannel(context);
 
         return builder.build();

@@ -6,19 +6,26 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.widget.TextView;
 import android.view.View;
+import android.widget.Button;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.WindowCompat;
+
+import com.google.android.material.button.MaterialButton;
 
 public class MainActivity extends AppCompatActivity {
 
     private TextView tvAmount;
+    private TextView tvLabel;
+    private MaterialButton btnVibration;
     
     private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
@@ -26,6 +33,10 @@ public class MainActivity extends AppCompatActivity {
             if (intent.hasExtra(CurrencyManager.EXTRA_AMOUNT)) {
                 int amount = intent.getIntExtra(CurrencyManager.EXTRA_AMOUNT, 0);
                 tvAmount.setText(String.valueOf(amount));
+                
+                if (intent.hasExtra(CurrencyManager.EXTRA_MODE_LABEL)) {
+                    tvLabel.setText(intent.getStringExtra(CurrencyManager.EXTRA_MODE_LABEL));
+                }
             } else {
                 refreshUI();
             }
@@ -35,18 +46,44 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Edge to Edge Mode
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+
         setContentView(R.layout.activity_main);
 
         tvAmount = findViewById(R.id.tvAmount);
+        tvLabel = findViewById(R.id.tvLabel);
         View btnAdd = findViewById(R.id.btnAdd);
         View btnMinus = findViewById(R.id.btnMinus);
+        View btnHistory = findViewById(R.id.btnHistory);
+        
+        // Setup Mode Toggle
+        View cardCounter = findViewById(R.id.cardCounter);
+        cardCounter.setOnClickListener(v -> {
+            CurrencyManager.toggleMode(this);
+            refreshUI();
+        });
 
         btnAdd.setOnClickListener(v -> updateCurrencyOptimistic(1));
         btnMinus.setOnClickListener(v -> updateCurrencyOptimistic(-1));
+        
+        // History Button
+        btnHistory.setOnClickListener(v -> {
+            startActivity(new Intent(this, HistoryActivity.class));
+        });
+
+        // Vibration Setting Button
+        btnVibration = findViewById(R.id.btnVibration);
+        btnVibration.setOnClickListener(v -> {
+            int newLevel = CurrencyManager.cycleVibration(this);
+            updateVibrationIcon(newLevel);
+        });
 
         checkPermissions();
         // Only start service if we have permission. 
-        // Logic handled in checkPermissions or immediately if below Android 13.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || 
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
             startForegroundServiceSafe();
@@ -64,6 +101,26 @@ public class MainActivity extends AppCompatActivity {
             // Ignore
         }
         CurrencyManager.updateCurrency(this, delta);
+    }
+    
+    private void updateVibrationIcon(int level) {
+        String text = "VIB: OFF";
+        
+        switch (level) {
+            case CurrencyManager.VIB_OFF:
+                text = "VIB: OFF";
+                btnVibration.setAlpha(0.5f);
+                break;
+            case CurrencyManager.VIB_LIGHT:
+                text = "VIB: LOW";
+                btnVibration.setAlpha(1.0f);
+                break;
+            case CurrencyManager.VIB_HEAVY:
+                text = "VIB: HIGH";
+                btnVibration.setAlpha(1.0f);
+                break;
+        }
+        btnVibration.setText(text);
     }
 
     @Override
@@ -91,6 +148,9 @@ public class MainActivity extends AppCompatActivity {
     private void refreshUI() {
         int amount = CurrencyManager.getCurrency(this);
         tvAmount.setText(String.valueOf(amount));
+        tvLabel.setText(CurrencyManager.getModeLabel(this));
+        
+        updateVibrationIcon(CurrencyManager.getVibrationLevel(this));
     }
 
     private void startForegroundServiceSafe() {
