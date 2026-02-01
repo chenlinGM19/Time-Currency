@@ -47,4 +47,14 @@ public class AppIconHelper {
         }
         return ".MainActivity";
     }
+
+    public static int getCurrentIconResource(Context context) {
+        String alias = getCurrentAlias(context);
+        if (".MainActivityAlias1".equals(alias)) {
+            return R.drawable.myicon1;
+        } else if (".MainActivityAlias2".equals(alias)) {
+            return R.drawable.myicon2;
+        }
+        return R.drawable.myicon; // Default
+    }
 }

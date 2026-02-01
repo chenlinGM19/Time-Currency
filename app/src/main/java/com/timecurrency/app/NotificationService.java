@@ -57,12 +57,21 @@ public class NotificationService extends Service {
 
     private static Notification buildNotification(Context context) {
         int amount = CurrencyManager.getCurrency(context);
-        String label = CurrencyManager.getModeLabel(context);
+        
+        // 1. Get the correct icon resource based on the current active alias
+        int iconResId = AppIconHelper.getCurrentIconResource(context);
 
-        Intent openAppIntent = new Intent(context, MainActivity.class);
+        // 2. Use getLaunchIntentForPackage to ensure we open the currently ENABLED alias/activity
+        // This fixes the issue where opening the app fails if MainActivity is disabled by an alias
+        Intent openAppIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+        if (openAppIntent == null) {
+            // Fallback just in case, though getLaunchIntentForPackage is robust
+            openAppIntent = new Intent(context, MainActivity.class);
+        }
         openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        
         PendingIntent pendingOpenApp = PendingIntent.getActivity(
-                context, 0, openAppIntent, PendingIntent.FLAG_IMMUTABLE);
+                context, 0, openAppIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         Intent incIntent = new Intent(context, NotificationActionReceiver.class);
         incIntent.setAction("INCREMENT");
@@ -92,7 +101,7 @@ public class NotificationService extends Service {
         customView.setOnClickPendingIntent(R.id.notif_text_container, pendingOpenApp);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(iconResId) // Set the dynamic icon here
                 .setCustomContentView(customView)
                 .setCustomBigContentView(customView) 
                 .setContentIntent(pendingOpenApp)
