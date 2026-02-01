@@ -13,9 +13,9 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.net.Uri;
+import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -29,6 +29,12 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }
+    }
+    
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager, int appWidgetId, Bundle newOptions) {
+        updateAppWidget(context, appWidgetManager, appWidgetId);
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
     }
 
     @Override
@@ -80,16 +86,39 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
         views.setTextViewText(R.id.widget_amount, String.valueOf(amount));
 
-        // --- 1. Apply Background Image ---
+        // --- Calculate Dimensions for Dynamic Bitmaps ---
+        Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
+        int minWidthDp = 160;
+        int minHeightDp = 80;
+        if (options != null) {
+            minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 160);
+            minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 80);
+        }
+        
+        // Convert DP to PX
+        float density = context.getResources().getDisplayMetrics().density;
+        int widthPx = (int) (minWidthDp * density);
+        int heightPx = (int) (minHeightDp * density);
+        float radiusPx = radiusDp * density;
+        
+        // Safety check for dimensions
+        if (widthPx <= 0) widthPx = 400;
+        if (heightPx <= 0) heightPx = 200;
+
+        // --- 1. Apply Dynamic Background Overlay (Shape + Radius) ---
+        // We create a white rounded bitmap. The Styles below will Tint it via setColorFilter.
+        // This ensures the color layer also respects the R-radius transparency.
+        Bitmap overlayBitmap = createSmartRoundedBitmap(null, widthPx, heightPx, radiusPx);
+        views.setImageViewBitmap(R.id.widget_bg_overlay, overlayBitmap);
+        views.setInt(R.id.widget_bg_overlay, "setAlpha", alpha);
+
+        // --- 2. Apply Background Image ---
         if (imagePath != null) {
             Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
             if (bitmap != null) {
-                // Apply rounded corners
-                float density = context.getResources().getDisplayMetrics().density;
-                float radiusPx = radiusDp * density;
-                Bitmap rounded = getRoundedCornerBitmap(bitmap, radiusPx);
-                
-                views.setImageViewBitmap(R.id.widget_bg_image, rounded);
+                // Crop and Round the user image to match the overlay perfectly
+                Bitmap roundedImage = createSmartRoundedBitmap(bitmap, widthPx, heightPx, radiusPx);
+                views.setImageViewBitmap(R.id.widget_bg_image, roundedImage);
                 views.setViewVisibility(R.id.widget_bg_image, View.VISIBLE);
             } else {
                 views.setViewVisibility(R.id.widget_bg_image, View.GONE);
@@ -97,10 +126,6 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         } else {
             views.setViewVisibility(R.id.widget_bg_image, View.GONE);
         }
-
-        // --- 2. Apply Transparency & Background Color Layer ---
-        // We set the alpha on the overlay view which contains the solid color/shape
-        views.setInt(R.id.widget_bg_overlay, "setAlpha", alpha);
 
         // --- 3. Apply Styles ---
         // Reset defaults
@@ -117,7 +142,8 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
 
         switch (style) {
             case 0: // Classic (Dark)
-                views.setImageViewResource(R.id.widget_bg_overlay, R.drawable.widget_background);
+                // Now using dynamic white bitmap, so we must tint it Dark Gray.
+                views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.parseColor("#212121"));
                 break;
             case 1: // Light Theme
                 views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.WHITE);
@@ -135,6 +161,8 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
                 views.setViewVisibility(R.id.widget_btn_minus, View.GONE);
                 views.setViewVisibility(R.id.widget_btn_plus, View.GONE);
                 views.setViewVisibility(R.id.widget_click_overlay, View.VISIBLE);
+                // Also tint the bg for consistency, though user might set alpha to 0
+                views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.parseColor("#212121"));
                 break;
             case 4: // Big Number
                 views.setFloat(R.id.widget_amount, "setTextSize", 48f);
@@ -160,7 +188,6 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         // Config Button (Open Settings for THIS widget)
         Intent configIntent = new Intent(context, WidgetConfigActivity.class);
         configIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-        // Important: set Data to make the intent unique per widget ID
         configIntent.setData(Uri.parse(configIntent.toUri(Intent.URI_INTENT_SCHEME)));
         PendingIntent pendingConfig = PendingIntent.getActivity(context, appWidgetId, configIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         views.setOnClickPendingIntent(R.id.widget_btn_config, pendingConfig);
@@ -174,20 +201,55 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
     
-    private static Bitmap getRoundedCornerBitmap(Bitmap bitmap, float pixels) {
-        Bitmap output = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+    /**
+     * Creates a bitmap of dimensions (targetWidth, targetHeight).
+     * 1. Clears canvas to TRANSPARENT.
+     * 2. Draws a rounded mask.
+     * 3. Uses SRC_IN to composite the image or solid white into the mask.
+     * This guarantees transparency outside the R-radius.
+     */
+    public static Bitmap createSmartRoundedBitmap(Bitmap source, int targetWidth, int targetHeight, float radiusPx) {
+        Bitmap output = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(output);
-        final int color = 0xff424242;
-        final Paint paint = new Paint();
-        final Rect rect = new Rect(0, 0, bitmap.getWidth(), bitmap.getHeight());
-        final RectF rectF = new RectF(rect);
-        final float roundPx = pixels;
+        Paint paint = new Paint();
         paint.setAntiAlias(true);
-        canvas.drawARGB(0, 0, 0, 0);
-        paint.setColor(color);
-        canvas.drawRoundRect(rectF, roundPx, roundPx, paint);
+        
+        RectF rectF = new RectF(0, 0, targetWidth, targetHeight);
+        
+        // 1. Start with completely transparent canvas
+        canvas.drawColor(Color.TRANSPARENT);
+        
+        // 2. Draw rounded mask (Opaque solid)
+        paint.setColor(0xFF000000); // Color doesn't matter for the mask, just alpha
+        canvas.drawRoundRect(rectF, radiusPx, radiusPx, paint);
+        
+        // 3. Composite Source
         paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
-        canvas.drawBitmap(bitmap, rect, rect, paint);
+        
+        if (source != null) {
+            // Center Crop Logic
+            float scale;
+            float dx = 0, dy = 0;
+            
+            if (source.getWidth() * targetHeight > targetWidth * source.getHeight()) {
+                scale = (float) targetHeight / (float) source.getHeight();
+                dx = (targetWidth - source.getWidth() * scale) * 0.5f;
+            } else {
+                scale = (float) targetWidth / (float) source.getWidth();
+                dy = (targetHeight - source.getHeight() * scale) * 0.5f;
+            }
+            
+            android.graphics.Matrix matrix = new android.graphics.Matrix();
+            matrix.setScale(scale, scale);
+            matrix.postTranslate((int) (dx + 0.5f), (int) (dy + 0.5f));
+            
+            canvas.drawBitmap(source, matrix, paint);
+        } else {
+            // Fill with White so it can be tinted by setColorFilter in RemoteViews
+            paint.setColor(0xFFFFFFFF);
+            canvas.drawRect(rectF, paint);
+        }
+        
         return output;
     }
 }

@@ -2,8 +2,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <include domain="sharedpref" path="."/>
+        <include domain="database" path="TimeCurrency.db"/>
     </cloud-backup>
     <device-transfer>
         <include domain="sharedpref" path="."/>
+        <include domain="database" path="TimeCurrency.db"/>
     </device-transfer>
 </data-extraction-rules>

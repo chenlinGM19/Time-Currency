@@ -1,21 +1,17 @@
 package com.timecurrency.app;
 
-import android.app.Activity;
+import android.app.AppOpsManager;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.Outline;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewOutlineProvider;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.Toast;
@@ -40,6 +36,8 @@ public class WidgetConfigActivity extends AppCompatActivity {
     private RadioGroup rgLayouts;
     private SeekBar seekBarTransparency;
     private SeekBar seekBarRadius;
+    
+    private Bitmap currentSourceBitmap = null;
     
     private final ActivityResultLauncher<String> pickImage = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -89,22 +87,21 @@ public class WidgetConfigActivity extends AppCompatActivity {
         // Load existing settings if any (for re-configuration)
         loadSavedSettings();
         
-        // Initialize preview corner radius
-        previewImage.setClipToOutline(true);
-        updatePreviewRadius(seekBarRadius.getProgress());
+        // Initial refresh
+        refreshPreview();
 
         btnSelectImage.setOnClickListener(v -> pickImage.launch("image/*"));
         
         btnClearImage.setOnClickListener(v -> {
             selectedImagePath = null;
-            previewImage.setImageDrawable(null);
-            previewImage.setBackgroundColor(Color.parseColor("#333333"));
+            currentSourceBitmap = null;
+            refreshPreview();
         });
         
         seekBarRadius.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                updatePreviewRadius(progress);
+                refreshPreview();
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -194,25 +191,25 @@ public class WidgetConfigActivity extends AppCompatActivity {
         // Image
         selectedImagePath = WidgetSettingsHelper.loadImagePath(this, appWidgetId);
         if (selectedImagePath != null) {
-            Bitmap bitmap = BitmapFactory.decodeFile(selectedImagePath);
-            if (bitmap != null) {
-                previewImage.setImageBitmap(bitmap);
-                previewImage.setBackground(null);
-            }
+            currentSourceBitmap = BitmapFactory.decodeFile(selectedImagePath);
         }
     }
     
-    private void updatePreviewRadius(int radiusDp) {
-        if (previewImage != null) {
-            float radiusPx = radiusDp * getResources().getDisplayMetrics().density;
-            previewImage.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radiusPx);
-                }
-            });
-            previewImage.invalidateOutline();
-        }
+    private void refreshPreview() {
+        if (previewImage == null) return;
+        
+        int w = previewImage.getWidth();
+        int h = previewImage.getHeight();
+        if (w == 0) w = 800; // fallback estimate
+        if (h == 0) h = 400;
+        
+        float radius = seekBarRadius.getProgress() * getResources().getDisplayMetrics().density;
+        
+        // Generate the exact same bitmap the widget will use
+        Bitmap preview = CurrencyWidgetProvider.createSmartRoundedBitmap(currentSourceBitmap, w, h, radius);
+        
+        previewImage.setImageBitmap(preview);
+        previewImage.setBackground(null);
     }
 
     private void saveImageLocally(Uri sourceUri) {
@@ -250,8 +247,8 @@ public class WidgetConfigActivity extends AppCompatActivity {
             out.close();
             
             selectedImagePath = file.getAbsolutePath();
-            previewImage.setImageBitmap(scaled);
-            previewImage.setBackground(null); // Remove default background
+            currentSourceBitmap = scaled;
+            refreshPreview();
             
         } catch (Exception e) {
             Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();

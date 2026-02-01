@@ -16,7 +16,7 @@
         android:id="@+id/widget_bg_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@drawable/widget_background" />
+        android:src="@null" />
 
     <RelativeLayout
         android:id="@+id/widget_content_container"
