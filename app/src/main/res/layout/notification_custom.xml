@@ -59,11 +59,10 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_minus"
             android:scaleType="centerInside"
-            android:padding="10dp" />
+            android:padding="10dp"
+            android:layout_marginEnd="8dp" />
 
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="wrap_content"/>
+        <!-- Space view removed as it is not supported in RemoteViews -->
 
         <ImageButton
             android:id="@+id/notif_btn_plus"
