@@ -74,7 +74,7 @@
                         android:focusable="true"
                         android:background="?attr/selectableItemBackgroundBorderless">
                         
-                        <androidx.cardview.widget.CardView
+                        <com.google.android.material.card.MaterialCardView
                             android:id="@+id/cardDefault"
                             android:layout_width="72dp"
                             android:layout_height="72dp"
@@ -89,7 +89,7 @@
                                 android:src="@drawable/myicon"
                                 android:scaleType="fitCenter"
                                 android:padding="8dp"/>
-                        </androidx.cardview.widget.CardView>
+                        </com.google.android.material.card.MaterialCardView>
                         
                         <TextView
                             android:id="@+id/textDefault"
@@ -113,7 +113,7 @@
                         android:focusable="true"
                         android:background="?attr/selectableItemBackgroundBorderless">
                         
-                        <androidx.cardview.widget.CardView
+                        <com.google.android.material.card.MaterialCardView
                             android:id="@+id/cardIcon1"
                             android:layout_width="72dp"
                             android:layout_height="72dp"
@@ -128,7 +128,7 @@
                                 android:src="@drawable/myicon1"
                                 android:scaleType="fitCenter"
                                 android:padding="8dp"/>
-                        </androidx.cardview.widget.CardView>
+                        </com.google.android.material.card.MaterialCardView>
                         
                         <TextView
                             android:id="@+id/textIcon1"
@@ -152,7 +152,7 @@
                         android:focusable="true"
                         android:background="?attr/selectableItemBackgroundBorderless">
                         
-                        <androidx.cardview.widget.CardView
+                        <com.google.android.material.card.MaterialCardView
                             android:id="@+id/cardIcon2"
                             android:layout_width="72dp"
                             android:layout_height="72dp"
@@ -167,7 +167,7 @@
                                 android:src="@drawable/myicon2"
                                 android:scaleType="fitCenter"
                                 android:padding="8dp"/>
-                        </androidx.cardview.widget.CardView>
+                        </com.google.android.material.card.MaterialCardView>
                         
                         <TextView
                             android:id="@+id/textIcon2"
@@ -233,7 +233,7 @@
                     android:gravity="center_vertical"
                     android:layout_marginBottom="24dp">
 
-                    <androidx.cardview.widget.CardView
+                    <com.google.android.material.card.MaterialCardView
                         android:layout_width="80dp"
                         android:layout_height="80dp"
                         app:cardCornerRadius="18dp"
@@ -246,7 +246,7 @@
                             android:scaleType="centerCrop"
                             android:src="@drawable/ic_launcher_foreground"
                             app:tint="#666666"/>
-                    </androidx.cardview.widget.CardView>
+                    </com.google.android.material.card.MaterialCardView>
 
                     <Button
                         android:id="@+id/btnSelectImage"

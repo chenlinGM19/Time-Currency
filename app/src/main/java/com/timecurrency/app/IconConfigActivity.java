@@ -20,7 +20,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
+import com.google.android.material.card.MaterialCardView;
 import androidx.core.view.WindowCompat;
 
 import java.io.InputStream;
@@ -31,7 +31,7 @@ public class IconConfigActivity extends AppCompatActivity {
     private Bitmap selectedBitmap;
     private String selectedAlias = ".MainActivity";
     
-    private CardView cardDefault, cardIcon1, cardIcon2;
+    private MaterialCardView cardDefault, cardIcon1, cardIcon2;
     
     private final ActivityResultLauncher<String> pickImage = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
