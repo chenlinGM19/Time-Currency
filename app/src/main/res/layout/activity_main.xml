@@ -20,17 +20,31 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
         
+    <!-- Icon Config Button -->
+    <ImageButton
+        android:id="@+id/btnIconConfig"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginStart="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/myicon"
+        android:padding="8dp"
+        android:scaleType="fitCenter"
+        app:tint="@color/md_theme_dark_secondary"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnHistory"
         style="@style/Widget.MaterialComponents.Button.TextButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:layout_marginStart="16dp"
         android:text="HISTORY"
         android:textColor="@color/md_theme_dark_secondary"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toEndOf="@id/btnIconConfig"
+        app:layout_constraintTop_toTopOf="@id/btnIconConfig"
+        app:layout_constraintBottom_toBottomOf="@id/btnIconConfig"/>
 
     <!-- Card Background for Counter -->
     <androidx.cardview.widget.CardView

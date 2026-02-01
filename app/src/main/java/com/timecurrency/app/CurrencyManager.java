@@ -99,11 +99,29 @@ public class CurrencyManager {
         notifyUpdates(context, displayValue);
     }
     
-    private static void checkDailyReset(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        long lastReset = prefs.getLong(KEY_LAST_RESET_TIME, 0);
+    /**
+     * Recalculates the current Total and Daily amounts based on the full transaction history in DB.
+     * Useful after importing data.
+     */
+    public static void recalculateTotals(Context context) {
+        int total = TransactionDbHelper.calculateTotalBalance(context);
         
-        // Logic: Calculate the "Start of Today's Cycle" (Today 6:00 AM)
+        long dailyStart = getDailyCycleStartTime();
+        int daily = TransactionDbHelper.calculateDailyBalance(context, dailyStart);
+        
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+            .putInt(KEY_TOTAL_AMOUNT, total)
+            .putInt(KEY_DAILY_AMOUNT, daily)
+            // Ensure we don't accidentally reset daily amount immediately
+            .putLong(KEY_LAST_RESET_TIME, System.currentTimeMillis()) 
+            .apply();
+            
+        int displayValue = (prefs.getInt(KEY_DISPLAY_MODE, MODE_TOTAL) == MODE_DAILY) ? daily : total;
+        notifyUpdates(context, displayValue);
+    }
+    
+    private static long getDailyCycleStartTime() {
         Calendar now = Calendar.getInstance();
         Calendar cycleStart = Calendar.getInstance();
         cycleStart.set(Calendar.HOUR_OF_DAY, 6);
@@ -111,13 +129,20 @@ public class CurrencyManager {
         cycleStart.set(Calendar.SECOND, 0);
         cycleStart.set(Calendar.MILLISECOND, 0);
         
-        // If it's currently before 6 AM, the cycle started yesterday at 6 AM
         if (now.before(cycleStart)) {
             cycleStart.add(Calendar.DAY_OF_YEAR, -1);
         }
+        return cycleStart.getTimeInMillis();
+    }
+    
+    private static void checkDailyReset(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        long lastReset = prefs.getLong(KEY_LAST_RESET_TIME, 0);
+        
+        long cycleStartTime = getDailyCycleStartTime();
         
         // If last reset was before the current cycle start, we need to reset
-        if (lastReset < cycleStart.getTimeInMillis()) {
+        if (lastReset < cycleStartTime) {
             prefs.edit()
                 .putInt(KEY_DAILY_AMOUNT, 0)
                 .putLong(KEY_LAST_RESET_TIME, System.currentTimeMillis())

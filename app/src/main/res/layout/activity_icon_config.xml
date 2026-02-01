@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/md_theme_dark_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+        
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            app:title="Customize Icon"
+            app:titleTextColor="@color/md_theme_dark_secondary"
+            app:navigationIcon="@drawable/ic_minus"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="System App Icon"
+            android:textColor="@color/md_theme_dark_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Note: Changing the system icon may close the app."
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:layout_marginBottom="16dp"/>
+
+        <RadioGroup
+            android:id="@+id/rgIcons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp">
+            
+            <RadioButton
+                android:id="@+id/rbDefault"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Default (MyIcon)"
+                android:textColor="#FFF"
+                android:padding="12dp"
+                android:drawableEnd="@drawable/myicon"
+                android:drawablePadding="16dp"/>
+                
+            <RadioButton
+                android:id="@+id/rbIcon1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Variant 1 (Clock)"
+                android:textColor="#FFF"
+                android:padding="12dp"
+                android:drawableEnd="@drawable/myicon1"
+                android:drawablePadding="16dp"/>
+                
+            <RadioButton
+                android:id="@+id/rbIcon2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Variant 2 (Minimal)"
+                android:textColor="#FFF"
+                android:padding="12dp"
+                android:drawableEnd="@drawable/myicon2"
+                android:drawablePadding="16dp"/>
+        </RadioGroup>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#333333"
+            android:layout_marginBottom="32dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Custom Shortcut"
+            android:textColor="@color/md_theme_dark_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+            
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Create a home screen shortcut with any image."
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnSelectImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select PNG from Gallery"
+            android:backgroundTint="@color/md_theme_dark_secondaryContainer"
+            android:textColor="@color/md_theme_dark_onSecondaryContainer"
+            android:layout_marginBottom="16dp"/>
+            
+        <ImageView
+            android:id="@+id/previewShortcut"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_gravity="center_horizontal"
+            android:background="#222"
+            android:scaleType="fitCenter"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnAddShortcut"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="Add to Home Screen"
+            android:backgroundTint="@color/md_theme_dark_primaryContainer"
+            android:textColor="@color/md_theme_dark_onPrimaryContainer"
+            android:enabled="false"/>
+
+    </LinearLayout>
+</ScrollView>

@@ -54,6 +54,70 @@ public class TransactionDbHelper extends SQLiteOpenHelper {
         }
     }
     
+    /**
+     * Imports a transaction. Prevents duplicates by checking if a transaction with the 
+     * exact same timestamp already exists.
+     */
+    public static boolean importTransaction(Context context, long timestamp, int delta) {
+        try (TransactionDbHelper dbHelper = new TransactionDbHelper(context)) {
+            SQLiteDatabase db = dbHelper.getWritableDatabase();
+            
+            // Check for duplicate based on timestamp
+            Cursor cursor = db.query(TABLE_NAME, new String[]{COLUMN_ID}, 
+                    COLUMN_TIMESTAMP + " = ?", 
+                    new String[]{String.valueOf(timestamp)}, null, null, null);
+            
+            boolean exists = cursor.getCount() > 0;
+            cursor.close();
+            
+            if (!exists) {
+                ContentValues values = new ContentValues();
+                values.put(COLUMN_TIMESTAMP, timestamp);
+                values.put(COLUMN_DELTA, delta);
+                // We don't necessarily know the total snapshot during import until we recalculate all,
+                // so we can leave it 0 or approximate it. 
+                // However, the most important part is the delta and timestamp.
+                values.put(COLUMN_TOTAL_SNAPSHOT, 0); 
+                db.insert(TABLE_NAME, null, values);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    public static int calculateTotalBalance(Context context) {
+        int total = 0;
+        try (TransactionDbHelper dbHelper = new TransactionDbHelper(context)) {
+            SQLiteDatabase db = dbHelper.getReadableDatabase();
+            Cursor cursor = db.rawQuery("SELECT SUM(" + COLUMN_DELTA + ") FROM " + TABLE_NAME, null);
+            if (cursor.moveToFirst()) {
+                total = cursor.getInt(0);
+            }
+            cursor.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return total;
+    }
+    
+    public static int calculateDailyBalance(Context context, long startTimeMillis) {
+        int total = 0;
+        try (TransactionDbHelper dbHelper = new TransactionDbHelper(context)) {
+            SQLiteDatabase db = dbHelper.getReadableDatabase();
+            Cursor cursor = db.rawQuery("SELECT SUM(" + COLUMN_DELTA + ") FROM " + TABLE_NAME + 
+                    " WHERE " + COLUMN_TIMESTAMP + " >= ?", new String[]{String.valueOf(startTimeMillis)});
+            if (cursor.moveToFirst()) {
+                total = cursor.getInt(0);
+            }
+            cursor.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return total;
+    }
+    
     public static Cursor getAllTransactions(Context context) {
         TransactionDbHelper dbHelper = new TransactionDbHelper(context);
         SQLiteDatabase db = dbHelper.getReadableDatabase();

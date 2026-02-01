@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         View btnAdd = findViewById(R.id.btnAdd);
         View btnMinus = findViewById(R.id.btnMinus);
         View btnHistory = findViewById(R.id.btnHistory);
+        View btnIconConfig = findViewById(R.id.btnIconConfig);
         
         // Setup Mode Toggle
         View cardCounter = findViewById(R.id.cardCounter);
@@ -73,6 +74,11 @@ public class MainActivity extends AppCompatActivity {
         // History Button
         btnHistory.setOnClickListener(v -> {
             startActivity(new Intent(this, HistoryActivity.class));
+        });
+        
+        // Icon Config Button
+        btnIconConfig.setOnClickListener(v -> {
+            startActivity(new Intent(this, IconConfigActivity.class));
         });
 
         // Vibration Setting Button

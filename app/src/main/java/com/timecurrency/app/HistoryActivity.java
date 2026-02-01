@@ -2,6 +2,7 @@ package com.timecurrency.app;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,6 +26,9 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -44,6 +48,16 @@ public class HistoryActivity extends AppCompatActivity {
             uri -> {
                 if (uri != null) {
                     exportDataToUri(uri);
+                }
+            }
+    );
+    
+    // For Importing
+    private final ActivityResultLauncher<String[]> openDocumentLauncher = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(),
+            uri -> {
+                if (uri != null) {
+                    importDataFromUri(uri);
                 }
             }
     );
@@ -74,6 +88,10 @@ public class HistoryActivity extends AppCompatActivity {
         findViewById(R.id.btnExport).setOnClickListener(v -> {
             String fileName = "time_currency_export_" + System.currentTimeMillis() + ".json";
             createDocumentLauncher.launch(fileName);
+        });
+        
+        findViewById(R.id.btnImport).setOnClickListener(v -> {
+             openDocumentLauncher.launch(new String[]{"application/json", "text/plain", "*/*"});
         });
     }
 
@@ -119,6 +137,48 @@ public class HistoryActivity extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> Toast.makeText(this, "Export Failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+    
+    private void importDataFromUri(Uri uri) {
+        new Thread(() -> {
+            try {
+                StringBuilder stringBuilder = new StringBuilder();
+                try (InputStream inputStream = getContentResolver().openInputStream(uri);
+                     BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        stringBuilder.append(line);
+                    }
+                }
+                
+                String jsonString = stringBuilder.toString();
+                JSONArray jsonArray = new JSONArray(jsonString);
+                
+                int importedCount = 0;
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    JSONObject obj = jsonArray.getJSONObject(i);
+                    long timestamp = obj.getLong("timestamp");
+                    int delta = obj.getInt("delta");
+                    
+                    if (TransactionDbHelper.importTransaction(this, timestamp, delta)) {
+                        importedCount++;
+                    }
+                }
+                
+                // Recalculate totals
+                CurrencyManager.recalculateTotals(this);
+                
+                final int count = importedCount;
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Imported " + count + " new records", Toast.LENGTH_SHORT).show();
+                    loadData(); // Refresh list
+                });
+                
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> Toast.makeText(this, "Import Failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
             }
         }).start();
     }
