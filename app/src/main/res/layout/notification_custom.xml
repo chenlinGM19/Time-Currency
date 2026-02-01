@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp">
+
+    <!-- App Icon / Logo -->
+    <ImageView
+        android:id="@+id/notif_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_notification"
+        app:tint="#03DAC6"
+        android:layout_marginEnd="16dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto"/>
+
+    <!-- Balance Text -->
+    <TextView
+        android:id="@+id/notif_amount"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="1234"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/primary_text_dark" />
+
+    <!-- Controls Container -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/notif_btn_minus"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_minus"
+            android:padding="12dp"
+            app:tint="#CF6679"
+            xmlns:app="http://schemas.android.com/apk/res-auto"/>
+
+        <View
+            android:layout_width="16dp"
+            android:layout_height="1dp"/>
+
+        <ImageButton
+            android:id="@+id/notif_btn_plus"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_plus"
+            android:padding="12dp"
+            app:tint="#03DAC6"
+            xmlns:app="http://schemas.android.com/apk/res-auto"/>
+            
+    </LinearLayout>
+
+</LinearLayout>

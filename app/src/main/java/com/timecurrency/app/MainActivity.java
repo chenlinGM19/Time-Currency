@@ -10,7 +10,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,10 +19,11 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends AppCompatActivity {
 
     private TextView tvAmount;
+    
+    // Receiver for updates coming from Service/Widget
     private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // Check if the intent contains the value directly for instant update
             if (intent.hasExtra(CurrencyManager.EXTRA_AMOUNT)) {
                 int amount = intent.getIntExtra(CurrencyManager.EXTRA_AMOUNT, 0);
                 tvAmount.setText(String.valueOf(amount));
@@ -42,12 +42,32 @@ public class MainActivity extends AppCompatActivity {
         Button btnAdd = findViewById(R.id.btnAdd);
         Button btnMinus = findViewById(R.id.btnMinus);
 
-        btnAdd.setOnClickListener(v -> CurrencyManager.updateCurrency(this, 1));
-        btnMinus.setOnClickListener(v -> CurrencyManager.updateCurrency(this, -1));
+        // Optimistic UI Update: Update text immediately for instant response
+        btnAdd.setOnClickListener(v -> {
+            updateCurrencyUI(1);
+        });
+
+        btnMinus.setOnClickListener(v -> {
+            updateCurrencyUI(-1);
+        });
 
         checkPermissions();
         startForegroundService();
         refreshUI();
+    }
+
+    private void updateCurrencyUI(int delta) {
+        // 1. Get current displayed value to update UI instantly
+        try {
+            int current = Integer.parseInt(tvAmount.getText().toString());
+            tvAmount.setText(String.valueOf(current + delta));
+        } catch (NumberFormatException e) {
+            // Fallback if text is weird
+            refreshUI();
+        }
+
+        // 2. Perform actual data save and broadcast
+        CurrencyManager.updateCurrency(this, delta);
     }
 
     @Override
