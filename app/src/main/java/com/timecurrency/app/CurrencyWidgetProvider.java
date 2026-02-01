@@ -15,6 +15,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.net.Uri;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -102,35 +103,38 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         views.setInt(R.id.widget_bg_overlay, "setAlpha", alpha);
 
         // --- 3. Apply Styles ---
-        // Reset defaults (Visibility might be handled by layout structure, but styling needs reset)
+        // Reset defaults
         views.setViewVisibility(R.id.widget_btn_minus, View.VISIBLE);
         views.setViewVisibility(R.id.widget_btn_plus, View.VISIBLE);
         views.setViewVisibility(R.id.widget_click_overlay, View.GONE);
         views.setTextColor(R.id.widget_amount, Color.WHITE);
         views.setTextColor(R.id.widget_btn_plus, Color.WHITE);
         views.setTextColor(R.id.widget_btn_minus, Color.WHITE);
+        views.setInt(R.id.widget_btn_config, "setColorFilter", Color.WHITE);
         
         // Default text size
         views.setFloat(R.id.widget_amount, "setTextSize", 24f);
 
         switch (style) {
             case 0: // Classic (Dark)
-                views.setImageViewResource(R.id.widget_bg_overlay, R.drawable.widget_background); // Uses the dark xml shape
+                views.setImageViewResource(R.id.widget_bg_overlay, R.drawable.widget_background);
                 break;
             case 1: // Light Theme
                 views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.WHITE);
                 views.setTextColor(R.id.widget_amount, Color.BLACK);
                 views.setTextColor(R.id.widget_btn_plus, Color.BLACK);
                 views.setTextColor(R.id.widget_btn_minus, Color.BLACK);
+                views.setInt(R.id.widget_btn_config, "setColorFilter", Color.BLACK);
                 break;
             case 2: // Accent Color
                 views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.parseColor("#03DAC6"));
                 views.setTextColor(R.id.widget_amount, Color.BLACK);
+                views.setInt(R.id.widget_btn_config, "setColorFilter", Color.BLACK);
                 break;
             case 3: // Minimal (Text Only)
                 views.setViewVisibility(R.id.widget_btn_minus, View.GONE);
                 views.setViewVisibility(R.id.widget_btn_plus, View.GONE);
-                views.setViewVisibility(R.id.widget_click_overlay, View.VISIBLE); // Allow clicking whole widget to open app
+                views.setViewVisibility(R.id.widget_click_overlay, View.VISIBLE);
                 break;
             case 4: // Big Number
                 views.setFloat(R.id.widget_amount, "setTextSize", 48f);
@@ -152,6 +156,14 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         decIntent.setAction(ACTION_DECREMENT);
         PendingIntent pendingDec = PendingIntent.getBroadcast(context, 101, decIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         views.setOnClickPendingIntent(R.id.widget_btn_minus, pendingDec);
+
+        // Config Button (Open Settings for THIS widget)
+        Intent configIntent = new Intent(context, WidgetConfigActivity.class);
+        configIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+        // Important: set Data to make the intent unique per widget ID
+        configIntent.setData(Uri.parse(configIntent.toUri(Intent.URI_INTENT_SCHEME)));
+        PendingIntent pendingConfig = PendingIntent.getActivity(context, appWidgetId, configIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        views.setOnClickPendingIntent(R.id.widget_btn_config, pendingConfig);
 
         // Open App
         Intent openIntent = new Intent(context, MainActivity.class);

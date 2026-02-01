@@ -35,6 +35,12 @@ public class WidgetConfigActivity extends AppCompatActivity {
     private ImageView previewImage;
     private String selectedImagePath = null;
     
+    // UI References
+    private RadioGroup rgStyles;
+    private RadioGroup rgLayouts;
+    private SeekBar seekBarTransparency;
+    private SeekBar seekBarRadius;
+    
     private final ActivityResultLauncher<String> pickImage = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -55,7 +61,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_widget_config);
 
-        // Set the result to CANCELED.
+        // Set the result to CANCELED initially
         setResult(RESULT_CANCELED);
 
         // Find the widget id from the intent.
@@ -71,14 +77,17 @@ public class WidgetConfigActivity extends AppCompatActivity {
             return;
         }
 
-        RadioGroup rgStyles = findViewById(R.id.rgStyles);
-        RadioGroup rgLayouts = findViewById(R.id.rgLayouts);
-        SeekBar seekBarTransparency = findViewById(R.id.seekBarTransparency);
-        SeekBar seekBarRadius = findViewById(R.id.seekBarRadius);
+        rgStyles = findViewById(R.id.rgStyles);
+        rgLayouts = findViewById(R.id.rgLayouts);
+        seekBarTransparency = findViewById(R.id.seekBarTransparency);
+        seekBarRadius = findViewById(R.id.seekBarRadius);
         Button btnSelectImage = findViewById(R.id.btnSelectImage);
         Button btnClearImage = findViewById(R.id.btnClearImage);
         Button btnSave = findViewById(R.id.btnSaveWidget);
         previewImage = findViewById(R.id.previewImage);
+        
+        // Load existing settings if any (for re-configuration)
+        loadSavedSettings();
         
         // Initialize preview corner radius
         previewImage.setClipToOutline(true);
@@ -148,6 +157,49 @@ public class WidgetConfigActivity extends AppCompatActivity {
             setResult(RESULT_OK, resultValue);
             finish();
         });
+    }
+    
+    private void loadSavedSettings() {
+        // Style
+        int style = WidgetSettingsHelper.loadStyle(this, appWidgetId);
+        int styleId = R.id.style1; // Default
+        switch (style) {
+            case 0: styleId = R.id.style1; break;
+            case 1: styleId = R.id.style2; break;
+            case 2: styleId = R.id.style3; break;
+            case 3: styleId = R.id.style4; break;
+            case 4: styleId = R.id.style5; break;
+            case 5: styleId = R.id.style6; break;
+        }
+        rgStyles.check(styleId);
+
+        // Layout
+        int layout = WidgetSettingsHelper.loadLayoutMode(this, appWidgetId);
+        int layoutId = R.id.layoutDefault; // Default
+        switch (layout) {
+            case 0: layoutId = R.id.layoutDefault; break;
+            case 1: layoutId = R.id.layoutSidebarRight; break;
+            case 2: layoutId = R.id.layoutSidebarLeft; break;
+            case 3: layoutId = R.id.layoutVertical; break;
+            case 4: layoutId = R.id.layoutBarBottom; break;
+            case 5: layoutId = R.id.layoutBarTop; break;
+            case 6: layoutId = R.id.layoutDiagonal; break;
+        }
+        rgLayouts.check(layoutId);
+
+        // SeekBars
+        seekBarTransparency.setProgress(WidgetSettingsHelper.loadTransparency(this, appWidgetId));
+        seekBarRadius.setProgress(WidgetSettingsHelper.loadCornerRadius(this, appWidgetId));
+
+        // Image
+        selectedImagePath = WidgetSettingsHelper.loadImagePath(this, appWidgetId);
+        if (selectedImagePath != null) {
+            Bitmap bitmap = BitmapFactory.decodeFile(selectedImagePath);
+            if (bitmap != null) {
+                previewImage.setImageBitmap(bitmap);
+                previewImage.setBackground(null);
+            }
+        }
     }
     
     private void updatePreviewRadius(int radiusDp) {
