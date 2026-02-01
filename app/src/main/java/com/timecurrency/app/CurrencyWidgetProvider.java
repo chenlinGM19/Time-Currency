@@ -8,7 +8,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -37,8 +43,6 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         String action = intent.getAction();
 
         if (ACTION_INCREMENT.equals(action)) {
-            // We need appWidgetId to know specifically which widget initiated this if we wanted per-widget logic,
-            // but the currency is global.
             CurrencyManager.updateCurrency(context, 1);
         } else if (ACTION_DECREMENT.equals(action)) {
             CurrencyManager.updateCurrency(context, -1);
@@ -55,17 +59,36 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         
         // Load settings
         int style = WidgetSettingsHelper.loadStyle(context, appWidgetId);
+        int layoutMode = WidgetSettingsHelper.loadLayoutMode(context, appWidgetId);
         int alpha = WidgetSettingsHelper.loadTransparency(context, appWidgetId);
         String imagePath = WidgetSettingsHelper.loadImagePath(context, appWidgetId);
+        int radiusDp = WidgetSettingsHelper.loadCornerRadius(context, appWidgetId);
 
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
+        // Select Layout based on mode
+        int layoutId;
+        switch (layoutMode) {
+            case 1: layoutId = R.layout.widget_layout_sidebar_right; break;
+            case 2: layoutId = R.layout.widget_layout_sidebar_left; break;
+            case 3: layoutId = R.layout.widget_layout_vertical; break;
+            case 4: layoutId = R.layout.widget_layout_bar_bottom; break;
+            case 5: layoutId = R.layout.widget_layout_bar_top; break;
+            case 6: layoutId = R.layout.widget_layout_corners; break;
+            default: layoutId = R.layout.widget_layout; break; // Default Horizontal
+        }
+
+        RemoteViews views = new RemoteViews(context.getPackageName(), layoutId);
         views.setTextViewText(R.id.widget_amount, String.valueOf(amount));
 
         // --- 1. Apply Background Image ---
         if (imagePath != null) {
             Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
             if (bitmap != null) {
-                views.setImageViewBitmap(R.id.widget_bg_image, bitmap);
+                // Apply rounded corners
+                float density = context.getResources().getDisplayMetrics().density;
+                float radiusPx = radiusDp * density;
+                Bitmap rounded = getRoundedCornerBitmap(bitmap, radiusPx);
+                
+                views.setImageViewBitmap(R.id.widget_bg_image, rounded);
                 views.setViewVisibility(R.id.widget_bg_image, View.VISIBLE);
             } else {
                 views.setViewVisibility(R.id.widget_bg_image, View.GONE);
@@ -79,7 +102,7 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         views.setInt(R.id.widget_bg_overlay, "setAlpha", alpha);
 
         // --- 3. Apply Styles ---
-        // Reset defaults
+        // Reset defaults (Visibility might be handled by layout structure, but styling needs reset)
         views.setViewVisibility(R.id.widget_btn_minus, View.VISIBLE);
         views.setViewVisibility(R.id.widget_btn_plus, View.VISIBLE);
         views.setViewVisibility(R.id.widget_click_overlay, View.GONE);
@@ -95,11 +118,6 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
                 views.setImageViewResource(R.id.widget_bg_overlay, R.drawable.widget_background); // Uses the dark xml shape
                 break;
             case 1: // Light Theme
-                // Create a dynamic light background or use a different drawable
-                // Since we can't easily change drawable colors dynamically in RemoteViews without API 31,
-                // we rely on tint or specific drawables. For simplicity, we use setInt for color filter if simple,
-                // or just rely on the drawable logic.
-                // Here we just tint the background drawable to white
                 views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.WHITE);
                 views.setTextColor(R.id.widget_amount, Color.BLACK);
                 views.setTextColor(R.id.widget_btn_plus, Color.BLACK);
@@ -119,8 +137,6 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
                 views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.BLACK);
                 break;
             case 5: // Compact (1x1)
-                 // Adjust layout parameters if possible, or just rely on responsive layouts.
-                 // For 1x1, the default layout works but text might be large.
                  views.setFloat(R.id.widget_amount, "setTextSize", 16f);
                  views.setInt(R.id.widget_bg_overlay, "setColorFilter", Color.DKGRAY);
                 break;
@@ -129,8 +145,6 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         // --- 4. Setup Actions ---
         Intent incIntent = new Intent(context, CurrencyWidgetProvider.class);
         incIntent.setAction(ACTION_INCREMENT);
-        // Important: Use unique request codes or setData to distinguish distinct pending intents if needed,
-        // though here the Action is different so it's fine.
         PendingIntent pendingInc = PendingIntent.getBroadcast(context, 100, incIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         views.setOnClickPendingIntent(R.id.widget_btn_plus, pendingInc);
 
@@ -146,5 +160,22 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.widget_click_overlay, pendingOpen);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
+    }
+    
+    private static Bitmap getRoundedCornerBitmap(Bitmap bitmap, float pixels) {
+        Bitmap output = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(output);
+        final int color = 0xff424242;
+        final Paint paint = new Paint();
+        final Rect rect = new Rect(0, 0, bitmap.getWidth(), bitmap.getHeight());
+        final RectF rectF = new RectF(rect);
+        final float roundPx = pixels;
+        paint.setAntiAlias(true);
+        canvas.drawARGB(0, 0, 0, 0);
+        paint.setColor(color);
+        canvas.drawRoundRect(rectF, roundPx, roundPx, paint);
+        paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+        canvas.drawBitmap(bitmap, rect, rect, paint);
+        return output;
     }
 }

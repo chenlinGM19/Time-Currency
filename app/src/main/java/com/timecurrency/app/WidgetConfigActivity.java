@@ -7,8 +7,12 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Outline;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewOutlineProvider;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RadioButton;
@@ -68,49 +72,95 @@ public class WidgetConfigActivity extends AppCompatActivity {
         }
 
         RadioGroup rgStyles = findViewById(R.id.rgStyles);
+        RadioGroup rgLayouts = findViewById(R.id.rgLayouts);
         SeekBar seekBarTransparency = findViewById(R.id.seekBarTransparency);
+        SeekBar seekBarRadius = findViewById(R.id.seekBarRadius);
         Button btnSelectImage = findViewById(R.id.btnSelectImage);
         Button btnClearImage = findViewById(R.id.btnClearImage);
         Button btnSave = findViewById(R.id.btnSaveWidget);
         previewImage = findViewById(R.id.previewImage);
+        
+        // Initialize preview corner radius
+        previewImage.setClipToOutline(true);
+        updatePreviewRadius(seekBarRadius.getProgress());
 
         btnSelectImage.setOnClickListener(v -> pickImage.launch("image/*"));
         
         btnClearImage.setOnClickListener(v -> {
             selectedImagePath = null;
             previewImage.setImageDrawable(null);
+            previewImage.setBackgroundColor(Color.parseColor("#333333"));
+        });
+        
+        seekBarRadius.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                updatePreviewRadius(progress);
+            }
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
         btnSave.setOnClickListener(v -> {
             final Context context = WidgetConfigActivity.this;
 
             // 1. Save Style
-            int selectedId = rgStyles.getCheckedRadioButtonId();
+            int selectedStyleId = rgStyles.getCheckedRadioButtonId();
             int style = 0;
-            if (selectedId == R.id.style1) style = 0;
-            else if (selectedId == R.id.style2) style = 1;
-            else if (selectedId == R.id.style3) style = 2;
-            else if (selectedId == R.id.style4) style = 3;
-            else if (selectedId == R.id.style5) style = 4;
-            else if (selectedId == R.id.style6) style = 5;
+            if (selectedStyleId == R.id.style1) style = 0;
+            else if (selectedStyleId == R.id.style2) style = 1;
+            else if (selectedStyleId == R.id.style3) style = 2;
+            else if (selectedStyleId == R.id.style4) style = 3;
+            else if (selectedStyleId == R.id.style5) style = 4;
+            else if (selectedStyleId == R.id.style6) style = 5;
             WidgetSettingsHelper.saveStyle(context, appWidgetId, style);
 
-            // 2. Save Transparency
+            // 2. Save Layout Mode
+            int selectedLayoutId = rgLayouts.getCheckedRadioButtonId();
+            int layoutMode = 0;
+            if (selectedLayoutId == R.id.layoutDefault) layoutMode = 0;
+            else if (selectedLayoutId == R.id.layoutSidebarRight) layoutMode = 1;
+            else if (selectedLayoutId == R.id.layoutSidebarLeft) layoutMode = 2;
+            else if (selectedLayoutId == R.id.layoutVertical) layoutMode = 3;
+            else if (selectedLayoutId == R.id.layoutBarBottom) layoutMode = 4;
+            else if (selectedLayoutId == R.id.layoutBarTop) layoutMode = 5;
+            else if (selectedLayoutId == R.id.layoutDiagonal) layoutMode = 6;
+            WidgetSettingsHelper.saveLayoutMode(context, appWidgetId, layoutMode);
+
+            // 3. Save Transparency
             WidgetSettingsHelper.saveTransparency(context, appWidgetId, seekBarTransparency.getProgress());
             
-            // 3. Save Image Path
+            // 4. Save Corner Radius
+            WidgetSettingsHelper.saveCornerRadius(context, appWidgetId, seekBarRadius.getProgress());
+            
+            // 5. Save Image Path
             WidgetSettingsHelper.saveImagePath(context, appWidgetId, selectedImagePath);
 
-            // 4. Update the widget
+            // 6. Update the widget
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
             CurrencyWidgetProvider.updateAppWidget(context, appWidgetManager, appWidgetId);
 
-            // 5. Make sure we pass back the original appWidgetId
+            // 7. Make sure we pass back the original appWidgetId
             Intent resultValue = new Intent();
             resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
             setResult(RESULT_OK, resultValue);
             finish();
         });
+    }
+    
+    private void updatePreviewRadius(int radiusDp) {
+        if (previewImage != null) {
+            float radiusPx = radiusDp * getResources().getDisplayMetrics().density;
+            previewImage.setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radiusPx);
+                }
+            });
+            previewImage.invalidateOutline();
+        }
     }
 
     private void saveImageLocally(Uri sourceUri) {
@@ -149,6 +199,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
             
             selectedImagePath = file.getAbsolutePath();
             previewImage.setImageBitmap(scaled);
+            previewImage.setBackground(null); // Remove default background
             
         } catch (Exception e) {
             Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();

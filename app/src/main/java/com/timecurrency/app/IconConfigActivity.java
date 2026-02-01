@@ -14,17 +14,14 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
+import androidx.cardview.widget.CardView;
 import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import java.io.InputStream;
 
@@ -32,6 +29,9 @@ public class IconConfigActivity extends AppCompatActivity {
 
     private ImageView previewShortcut;
     private Bitmap selectedBitmap;
+    private String selectedAlias = ".MainActivity";
+    
+    private CardView cardDefault, cardIcon1, cardIcon2;
     
     private final ActivityResultLauncher<String> pickImage = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -51,31 +51,44 @@ public class IconConfigActivity extends AppCompatActivity {
         
         setContentView(R.layout.activity_icon_config);
         
-        // Manual inset handling removed in favor of fitsSystemWindows="true" in XML
-        
         findViewById(R.id.toolbar).setOnClickListener(v -> finish());
 
         // --- System Icon Switching ---
-        RadioGroup rgIcons = findViewById(R.id.rgIcons);
-        String currentAlias = AppIconHelper.getCurrentAlias(this);
+        cardDefault = findViewById(R.id.cardDefault);
+        cardIcon1 = findViewById(R.id.cardIcon1);
+        cardIcon2 = findViewById(R.id.cardIcon2);
         
-        if (".MainActivityAlias1".equals(currentAlias)) {
-            rgIcons.check(R.id.rbIcon1);
-        } else if (".MainActivityAlias2".equals(currentAlias)) {
-            rgIcons.check(R.id.rbIcon2);
-        } else {
-            rgIcons.check(R.id.rbDefault);
-        }
+        View layoutDefault = findViewById(R.id.layoutDefault);
+        View layoutIcon1 = findViewById(R.id.layoutIcon1);
+        View layoutIcon2 = findViewById(R.id.layoutIcon2);
+        
+        // Initial State
+        String current = AppIconHelper.getCurrentAlias(this);
+        if (".MainActivityAlias1".equals(current)) selectedAlias = ".MainActivityAlias1";
+        else if (".MainActivityAlias2".equals(current)) selectedAlias = ".MainActivityAlias2";
+        else selectedAlias = ".MainActivity";
+        
+        refreshSelectionUI();
+        
+        layoutDefault.setOnClickListener(v -> {
+            selectedAlias = ".MainActivity";
+            refreshSelectionUI();
+        });
+        
+        layoutIcon1.setOnClickListener(v -> {
+            selectedAlias = ".MainActivityAlias1";
+            refreshSelectionUI();
+        });
+        
+        layoutIcon2.setOnClickListener(v -> {
+            selectedAlias = ".MainActivityAlias2";
+            refreshSelectionUI();
+        });
         
         Button btnApplyIcon = findViewById(R.id.btnApplyIcon);
         btnApplyIcon.setOnClickListener(v -> {
-            int checkedId = rgIcons.getCheckedRadioButtonId();
-            String targetAlias = ".MainActivity";
-            if (checkedId == R.id.rbIcon1) targetAlias = ".MainActivityAlias1";
-            else if (checkedId == R.id.rbIcon2) targetAlias = ".MainActivityAlias2";
-            
-            if (!targetAlias.equals(AppIconHelper.getCurrentAlias(this))) {
-                showIconChangeConfirmation(targetAlias);
+            if (!selectedAlias.equals(AppIconHelper.getCurrentAlias(this))) {
+                showIconChangeConfirmation(selectedAlias);
             } else {
                 Toast.makeText(this, "This icon is already active", Toast.LENGTH_SHORT).show();
             }
@@ -111,6 +124,24 @@ public class IconConfigActivity extends AppCompatActivity {
                 Toast.makeText(this, "Android 8.0+ required for pinned shortcuts", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+    
+    private void refreshSelectionUI() {
+        // Reset all
+        cardDefault.setStrokeWidth(0);
+        cardIcon1.setStrokeWidth(0);
+        cardIcon2.setStrokeWidth(0);
+        
+        // Highlight selected
+        int highlightWidth = (int) (3 * getResources().getDisplayMetrics().density);
+        
+        if (".MainActivity".equals(selectedAlias)) {
+            cardDefault.setStrokeWidth(highlightWidth);
+        } else if (".MainActivityAlias1".equals(selectedAlias)) {
+            cardIcon1.setStrokeWidth(highlightWidth);
+        } else if (".MainActivityAlias2".equals(selectedAlias)) {
+            cardIcon2.setStrokeWidth(highlightWidth);
+        }
     }
 
     private void showIconChangeConfirmation(String targetAlias) {

@@ -56,55 +56,130 @@
                     android:textSize="14sp"
                     android:layout_marginBottom="24dp"/>
 
-                <RadioGroup
-                    android:id="@+id/rgIcons"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_horizontal">
+                    android:baselineAligned="false">
 
-                    <RadioButton
-                        android:id="@+id/rbDefault"
+                    <!-- Option 1: Default -->
+                    <LinearLayout
+                        android:id="@+id/layoutDefault"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:button="@null"
-                        android:drawableTop="@drawable/myicon"
-                        android:drawablePadding="8dp"
+                        android:orientation="vertical"
                         android:gravity="center"
-                        android:text="Default"
-                        android:textColor="@color/md_theme_dark_onSecondaryContainer"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:padding="8dp"/>
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackgroundBorderless">
+                        
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/cardDefault"
+                            android:layout_width="72dp"
+                            android:layout_height="72dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="@android:color/transparent"
+                            app:strokeWidth="0dp"
+                            app:strokeColor="@color/md_theme_dark_primary">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@drawable/myicon"
+                                android:scaleType="fitCenter"
+                                android:padding="8dp"/>
+                        </androidx.cardview.widget.CardView>
+                        
+                        <TextView
+                            android:id="@+id/textDefault"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Default"
+                            android:textColor="@color/md_theme_dark_onSecondaryContainer"
+                            android:layout_marginTop="8dp"
+                            android:textSize="12sp"/>
+                    </LinearLayout>
 
-                    <RadioButton
-                        android:id="@+id/rbIcon1"
+                    <!-- Option 2: Clock -->
+                    <LinearLayout
+                        android:id="@+id/layoutIcon1"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:button="@null"
-                        android:drawableTop="@drawable/myicon1"
-                        android:drawablePadding="8dp"
+                        android:orientation="vertical"
                         android:gravity="center"
-                        android:text="Clock"
-                        android:textColor="@color/md_theme_dark_onSecondaryContainer"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:padding="8dp"/>
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackgroundBorderless">
+                        
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/cardIcon1"
+                            android:layout_width="72dp"
+                            android:layout_height="72dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="@android:color/transparent"
+                            app:strokeWidth="0dp"
+                            app:strokeColor="@color/md_theme_dark_primary">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@drawable/myicon1"
+                                android:scaleType="fitCenter"
+                                android:padding="8dp"/>
+                        </androidx.cardview.widget.CardView>
+                        
+                        <TextView
+                            android:id="@+id/textIcon1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Clock"
+                            android:textColor="@color/md_theme_dark_onSecondaryContainer"
+                            android:layout_marginTop="8dp"
+                            android:textSize="12sp"/>
+                    </LinearLayout>
 
-                    <RadioButton
-                        android:id="@+id/rbIcon2"
+                    <!-- Option 3: Minimal -->
+                    <LinearLayout
+                        android:id="@+id/layoutIcon2"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:button="@null"
-                        android:drawableTop="@drawable/myicon2"
-                        android:drawablePadding="8dp"
+                        android:orientation="vertical"
                         android:gravity="center"
-                        android:text="Minimal"
-                        android:textColor="@color/md_theme_dark_onSecondaryContainer"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:padding="8dp"/>
-                </RadioGroup>
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackgroundBorderless">
+                        
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/cardIcon2"
+                            android:layout_width="72dp"
+                            android:layout_height="72dp"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="@android:color/transparent"
+                            app:strokeWidth="0dp"
+                            app:strokeColor="@color/md_theme_dark_primary">
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:src="@drawable/myicon2"
+                                android:scaleType="fitCenter"
+                                android:padding="8dp"/>
+                        </androidx.cardview.widget.CardView>
+                        
+                        <TextView
+                            android:id="@+id/textIcon2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Minimal"
+                            android:textColor="@color/md_theme_dark_onSecondaryContainer"
+                            android:layout_marginTop="8dp"
+                            android:textSize="12sp"/>
+                    </LinearLayout>
+
+                </LinearLayout>
                 
                 <Button
                     android:id="@+id/btnApplyIcon"

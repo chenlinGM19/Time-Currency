@@ -21,11 +21,36 @@
             android:textStyle="bold"
             android:layout_marginBottom="24dp"/>
 
+        <!-- Layout Mode Selection -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Layout Mode"
+            android:textColor="#03DAC6"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"/>
+
+        <RadioGroup
+            android:id="@+id/rgLayouts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="24dp">
+            
+            <RadioButton android:id="@+id/layoutDefault" android:text="Default (Inline Row)" android:textColor="#FFF" android:checked="true"/>
+            <RadioButton android:id="@+id/layoutSidebarRight" android:text="Sidebar Right (+/- on Right)" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/layoutSidebarLeft" android:text="Sidebar Left (+/- on Left)" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/layoutVertical" android:text="Vertical Stack (Top/Bottom)" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/layoutBarBottom" android:text="Control Bar Bottom" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/layoutBarTop" android:text="Control Bar Top" android:textColor="#FFF"/>
+            <RadioButton android:id="@+id/layoutDiagonal" android:text="Diagonal Corners" android:textColor="#FFF"/>
+        </RadioGroup>
+
         <!-- Style Selection -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Style"
+            android:text="Visual Style"
             android:textColor="#03DAC6"
             android:textSize="16sp"
             android:layout_marginBottom="8dp"/>
@@ -60,6 +85,23 @@
             android:layout_height="wrap_content"
             android:max="255"
             android:progress="255"
+            android:layout_marginBottom="24dp"/>
+            
+        <!-- Corner Radius -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Corner Radius"
+            android:textColor="#03DAC6"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"/>
+
+        <SeekBar
+            android:id="@+id/seekBarRadius"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="64"
+            android:progress="16"
             android:layout_marginBottom="24dp"/>
 
         <!-- Background Image -->
