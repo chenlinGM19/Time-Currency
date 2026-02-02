@@ -304,7 +304,7 @@ public class WidgetConfigActivity extends AppCompatActivity {
         int offY = (int) ((viewCenterY - centerY) / density);
         
         if (type.equals("amount")) WidgetSettingsHelper.saveAmountOffset(this, appWidgetId, offX, offY);
-        else if (type.equals("plus")) WidgetSettingsHelper.savePlusOffsetRaw(this, appWidgetId, offX, offY);
+        else if (type.equals("plus")) WidgetSettingsHelper.savePlusOffset(this, appWidgetId, offX, offY);
         else if (type.equals("minus")) WidgetSettingsHelper.saveMinusOffset(this, appWidgetId, offX, offY);
     }
     

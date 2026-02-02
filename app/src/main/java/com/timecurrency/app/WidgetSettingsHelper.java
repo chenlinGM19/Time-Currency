@@ -2,6 +2,7 @@ package com.timecurrency.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import java.util.Map;
 
 public class WidgetSettingsHelper {
     private static final String PREFS_NAME = "com.timecurrency.app.WidgetPrefs";
@@ -89,40 +90,42 @@ public class WidgetSettingsHelper {
     }
 
     public static void savePlusOffset(Context context, int appWidgetId, int x, int y) {
-        // Default Plus to right side (+60dp approx) if not set? No, let UI handle defaults via layout center.
-        // But we want initial separation. 
+        saveOffset(context, appWidgetId, "plus", x, y);
+    }
+    
+    public static int[] loadPlusOffset(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
         if (!prefs.contains(PREF_PREFIX_KEY + appWidgetId + "_plus_x")) {
-            // Initial default offset for Plus
+            // Initial default offset for Plus: Right side
             return new int[]{60, 0}; 
         }
         return loadOffset(context, appWidgetId, "plus");
-    }
-    public static void savePlusOffsetRaw(Context context, int appWidgetId, int x, int y) {
-         saveOffset(context, appWidgetId, "plus", x, y);
     }
 
     public static void saveMinusOffset(Context context, int appWidgetId, int x, int y) {
         saveOffset(context, appWidgetId, "minus", x, y);
     }
+    
     public static int[] loadMinusOffset(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
         if (!prefs.contains(PREF_PREFIX_KEY + appWidgetId + "_minus_x")) {
-            // Initial default offset for Minus
+            // Initial default offset for Minus: Left side
             return new int[]{-60, 0}; 
         }
         return loadOffset(context, appWidgetId, "minus");
     }
 
     public static void deletePrefs(Context context, int appWidgetId) {
-        SharedPreferences.Editor prefs = context.getSharedPreferences(PREFS_NAME, 0).edit();
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = prefs.edit();
+        
         // Remove all keys starting with prefix + ID
-        java.util.Map<String, ?> all = prefs.getAll();
+        Map<String, ?> all = prefs.getAll();
         for (String key : all.keySet()) {
             if (key.startsWith(PREF_PREFIX_KEY + appWidgetId)) {
-                prefs.remove(key);
+                editor.remove(key);
             }
         }
-        prefs.apply();
+        editor.apply();
     }
 }
