@@ -17,7 +17,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
-import android.widget.Toast;
+import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -36,7 +36,10 @@ public class WidgetConfigActivity extends AppCompatActivity {
     
     // UI References
     private View previewContainer;
-    private View previewContent;
+    private TextView previewAmount;
+    private Button previewPlus;
+    private Button previewMinus;
+    
     private ImageView previewBgImage;
     private View previewBgColor;
     
@@ -48,10 +51,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
     private SeekBar seekBarRadius;
     
     private String selectedImagePath = null;
-    private int currentOffsetX = 0;
-    private int currentOffsetY = 0;
-    
-    private float dX, dY; // For dragging
     
     private final ActivityResultLauncher<String> pickImage = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -86,13 +85,20 @@ public class WidgetConfigActivity extends AppCompatActivity {
 
         initViews();
         loadSavedSettings();
-        setupDragListener();
+        
+        setupDragListener(previewAmount);
+        setupDragListener(previewPlus);
+        setupDragListener(previewMinus);
+        
         updateUIState();
     }
     
     private void initViews() {
         previewContainer = findViewById(R.id.previewContainer);
-        previewContent = findViewById(R.id.previewContent);
+        previewAmount = findViewById(R.id.previewAmount);
+        previewPlus = findViewById(R.id.previewPlus);
+        previewMinus = findViewById(R.id.previewMinus);
+        
         previewBgImage = findViewById(R.id.previewBgImage);
         previewBgColor = findViewById(R.id.previewBgColor);
         
@@ -130,8 +136,9 @@ public class WidgetConfigActivity extends AppCompatActivity {
         btnSave.setOnClickListener(v -> saveAndFinish());
     }
     
-    private void setupDragListener() {
-        previewContent.setOnTouchListener(new View.OnTouchListener() {
+    private void setupDragListener(View targetView) {
+        targetView.setOnTouchListener(new View.OnTouchListener() {
+            float dX, dY;
             @Override
             public boolean onTouch(View view, MotionEvent event) {
                 switch (event.getAction()) {
@@ -144,10 +151,11 @@ public class WidgetConfigActivity extends AppCompatActivity {
                         float newX = event.getRawX() + dX;
                         float newY = event.getRawY() + dY;
                         
-                        // Constrain dragging roughly within container
+                        // Constrain dragging
                         float limitX = previewContainer.getWidth() - view.getWidth();
                         float limitY = previewContainer.getHeight() - view.getHeight();
                         
+                        // Loose constraints
                         if (newX < -view.getWidth()/2) newX = -view.getWidth()/2;
                         if (newX > previewContainer.getWidth() - view.getWidth()/2) newX = previewContainer.getWidth() - view.getWidth()/2;
                         if (newY < -view.getHeight()/2) newY = -view.getHeight()/2;
@@ -155,18 +163,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
 
                         view.setX(newX);
                         view.setY(newY);
-                        
-                        // Calculate offset from center for saving
-                        float centerX = previewContainer.getWidth() / 2f;
-                        float centerY = previewContainer.getHeight() / 2f;
-                        float viewCenterX = newX + view.getWidth() / 2f;
-                        float viewCenterY = newY + view.getHeight() / 2f;
-                        
-                        // 1dp factor approx
-                        float density = getResources().getDisplayMetrics().density;
-                        currentOffsetX = (int) ((viewCenterX - centerX) / density);
-                        currentOffsetY = (int) ((viewCenterY - centerY) / density);
-                        
                         return true;
                         
                     default:
@@ -195,22 +191,27 @@ public class WidgetConfigActivity extends AppCompatActivity {
             previewBgImage.setImageBitmap(b);
         }
         
-        currentOffsetX = WidgetSettingsHelper.loadXOffset(this, appWidgetId);
-        currentOffsetY = WidgetSettingsHelper.loadYOffset(this, appWidgetId);
+        // Load Offsets for 3 components
+        final int[] amountOff = WidgetSettingsHelper.loadAmountOffset(this, appWidgetId);
+        final int[] plusOff = WidgetSettingsHelper.loadPlusOffset(this, appWidgetId);
+        final int[] minusOff = WidgetSettingsHelper.loadMinusOffset(this, appWidgetId);
         
-        // Apply offsets to preview immediately (need to wait for layout pass usually, but post helps)
+        // Apply offsets to preview immediately
         previewContainer.post(() -> {
             float density = getResources().getDisplayMetrics().density;
-            float centerX = previewContainer.getWidth() / 2f;
-            float centerY = previewContainer.getHeight() / 2f;
             
-            // Re-center first (default layout puts it at 0,0 relative to parent if FrameLayout default, 
-            // but we used LayoutGravity center in XML)
-            // Actually, FrameLayout with layout_gravity=center puts it in center.
-            // setTranslation moves it from that spot.
+            // NOTE: FrameLayout with layout_gravity=center places them at (W-w)/2, (H-h)/2.
+            // Translation is additive to that position.
+            // The saved offsets are displacement from Center in DP.
             
-            previewContent.setTranslationX(currentOffsetX * density);
-            previewContent.setTranslationY(currentOffsetY * density);
+            previewAmount.setTranslationX(amountOff[0] * density);
+            previewAmount.setTranslationY(amountOff[1] * density);
+            
+            previewPlus.setTranslationX(plusOff[0] * density);
+            previewPlus.setTranslationY(plusOff[1] * density);
+            
+            previewMinus.setTranslationX(minusOff[0] * density);
+            previewMinus.setTranslationY(minusOff[1] * density);
         });
         
         refreshPreviewColor();
@@ -244,6 +245,12 @@ public class WidgetConfigActivity extends AppCompatActivity {
         
         int finalColor = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
         previewBgColor.setBackgroundColor(finalColor);
+        
+        // Update Text Colors based on style
+        int textColor = (id == R.id.style2 || id == R.id.style3) ? Color.BLACK : Color.WHITE;
+        previewAmount.setTextColor(textColor);
+        previewPlus.setTextColor(textColor);
+        previewMinus.setTextColor(textColor);
     }
     
     private void refreshPreviewRadius() {
@@ -271,11 +278,12 @@ public class WidgetConfigActivity extends AppCompatActivity {
         WidgetSettingsHelper.saveCornerRadius(this, appWidgetId, seekBarRadius.getProgress());
         WidgetSettingsHelper.saveImagePath(this, appWidgetId, selectedImagePath);
         
-        // Save offsets
-        WidgetSettingsHelper.saveXOffset(this, appWidgetId, currentOffsetX);
-        WidgetSettingsHelper.saveYOffset(this, appWidgetId, currentOffsetY);
+        // Save offsets for each element
+        saveElementOffset(previewAmount, "amount");
+        saveElementOffset(previewPlus, "plus");
+        saveElementOffset(previewMinus, "minus");
 
-        // Update
+        // Update Widget
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
         CurrencyWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId);
 
@@ -283,6 +291,21 @@ public class WidgetConfigActivity extends AppCompatActivity {
         resultValue.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         setResult(RESULT_OK, resultValue);
         finish();
+    }
+    
+    private void saveElementOffset(View view, String type) {
+        float centerX = previewContainer.getWidth() / 2f;
+        float centerY = previewContainer.getHeight() / 2f;
+        float viewCenterX = view.getX() + view.getWidth() / 2f;
+        float viewCenterY = view.getY() + view.getHeight() / 2f;
+        
+        float density = getResources().getDisplayMetrics().density;
+        int offX = (int) ((viewCenterX - centerX) / density);
+        int offY = (int) ((viewCenterY - centerY) / density);
+        
+        if (type.equals("amount")) WidgetSettingsHelper.saveAmountOffset(this, appWidgetId, offX, offY);
+        else if (type.equals("plus")) WidgetSettingsHelper.savePlusOffsetRaw(this, appWidgetId, offX, offY);
+        else if (type.equals("minus")) WidgetSettingsHelper.saveMinusOffset(this, appWidgetId, offX, offY);
     }
     
     private void saveImageLocally(Uri sourceUri) {

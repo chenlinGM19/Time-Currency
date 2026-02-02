@@ -65,34 +65,33 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         int alpha = WidgetSettingsHelper.loadTransparency(context, appWidgetId);
         String imagePath = WidgetSettingsHelper.loadImagePath(context, appWidgetId);
         int radiusDp = WidgetSettingsHelper.loadCornerRadius(context, appWidgetId);
-        int offsetX = WidgetSettingsHelper.loadXOffset(context, appWidgetId);
-        int offsetY = WidgetSettingsHelper.loadYOffset(context, appWidgetId);
+        
+        // Load Offsets for 3 elements
+        int[] amountOff = WidgetSettingsHelper.loadAmountOffset(context, appWidgetId);
+        int[] plusOff = WidgetSettingsHelper.loadPlusOffset(context, appWidgetId);
+        int[] minusOff = WidgetSettingsHelper.loadMinusOffset(context, appWidgetId);
 
         // Always use the unified layout
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
         views.setTextViewText(R.id.widget_amount, String.valueOf(amount));
 
         // --- 1. Corner Radius ---
-        // Apply drawable resource to Root. Android 12+ uses clipToOutline="true"
         int bgRes = getBackgroundResourceForRadius(radiusDp);
         views.setInt(R.id.widget_root, "setBackgroundResource", bgRes);
 
         // --- 2. Background Logic (Exclusive) ---
         if (bgType == 1 && imagePath != null) {
-            // IMAGE MODE
             Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
             if (bitmap != null) {
                 views.setImageViewBitmap(R.id.widget_bg_image, bitmap);
                 views.setViewVisibility(R.id.widget_bg_image, View.VISIBLE);
                 views.setViewVisibility(R.id.widget_bg_color, View.GONE);
             } else {
-                // Fallback if image load failed
                 views.setViewVisibility(R.id.widget_bg_image, View.GONE);
                 views.setViewVisibility(R.id.widget_bg_color, View.VISIBLE);
                 applyColorBackground(views, style, alpha);
             }
         } else {
-            // COLOR MODE
             views.setViewVisibility(R.id.widget_bg_image, View.GONE);
             views.setViewVisibility(R.id.widget_bg_color, View.VISIBLE);
             applyColorBackground(views, style, alpha);
@@ -102,26 +101,29 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         applyTextStyle(views, style);
 
         // --- 4. Layout Positioning (Offsets) ---
-        // We use setViewPadding on the content container to shift the center of the LinearLayout.
+        // Apply offsets by setting padding to the wrapper FrameLayouts
         float density = context.getResources().getDisplayMetrics().density;
-        int pxX = (int) (offsetX * density);
-        int pxY = (int) (offsetY * density);
         
-        // Logic: To move content Right (+X), add Padding Left. To move Down (+Y), add Padding Top.
-        // Assuming the container is sized match_parent/match_parent.
-        // If pxX is negative (Left), add Padding Right.
+        applyOffsetToWrapper(views, R.id.wrapper_amount, amountOff[0], amountOff[1], density);
+        applyOffsetToWrapper(views, R.id.wrapper_plus, plusOff[0], plusOff[1], density);
+        applyOffsetToWrapper(views, R.id.wrapper_minus, minusOff[0], minusOff[1], density);
+
+        // --- 5. Actions ---
+        setupActions(context, views, appWidgetId);
+
+        appWidgetManager.updateAppWidget(appWidgetId, views);
+    }
+    
+    private static void applyOffsetToWrapper(RemoteViews views, int viewId, int offX, int offY, float density) {
+        int pxX = (int) (offX * density);
+        int pxY = (int) (offY * density);
         
         int padLeft = (pxX > 0) ? pxX : 0;
         int padRight = (pxX < 0) ? -pxX : 0;
         int padTop = (pxY > 0) ? pxY : 0;
         int padBottom = (pxY < 0) ? -pxY : 0;
         
-        views.setViewPadding(R.id.widget_content_container, padLeft, padTop, padRight, padBottom);
-
-        // --- 5. Actions ---
-        setupActions(context, views, appWidgetId);
-
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+        views.setViewPadding(viewId, padLeft, padTop, padRight, padBottom);
     }
     
     private static void applyColorBackground(RemoteViews views, int style, int alpha) {
@@ -130,7 +132,6 @@ public class CurrencyWidgetProvider extends AppWidgetProvider {
         else if (style == 2) color = Color.parseColor("#03DAC6");
         else if (style == 4) color = Color.BLACK;
 
-        // Apply alpha to the base color
         int finalColor = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
         views.setInt(R.id.widget_bg_color, "setBackgroundColor", finalColor);
     }

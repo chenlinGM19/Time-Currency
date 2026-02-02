@@ -24,6 +24,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
+import com.google.android.material.button.MaterialButtonToggleGroup;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -40,7 +42,7 @@ import java.util.Locale;
 public class HistoryActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
-    private TransactionAdapter adapter;
+    private RecyclerView.Adapter currentAdapter;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
     
     // For Exporting
@@ -66,22 +68,29 @@ public class HistoryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        // Edge to Edge
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         getWindow().setNavigationBarColor(Color.TRANSPARENT);
         
         setContentView(R.layout.activity_history);
-        
-        // Removed manual insets listener on android.R.id.content to allow XML fitsSystemWindows to handle background correctly
 
         findViewById(R.id.toolbar).setOnClickListener(v -> finish());
 
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         
-        loadData();
+        MaterialButtonToggleGroup toggleGroup = findViewById(R.id.toggleViewMode);
+        toggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                if (checkedId == R.id.btnModeDaily) {
+                    loadDailyData();
+                } else {
+                    loadTransactionData();
+                }
+            }
+        });
+        
+        loadTransactionData();
 
         findViewById(R.id.btnExport).setOnClickListener(v -> {
             String fileName = "time_currency_export_" + System.currentTimeMillis() + ".json";
@@ -93,7 +102,7 @@ public class HistoryActivity extends AppCompatActivity {
         });
     }
 
-    private void loadData() {
+    private void loadTransactionData() {
         List<TransactionItem> items = new ArrayList<>();
         try (Cursor cursor = TransactionDbHelper.getAllTransactions(this)) {
             while (cursor.moveToNext()) {
@@ -102,8 +111,14 @@ public class HistoryActivity extends AppCompatActivity {
                 items.add(new TransactionItem(timestamp, delta));
             }
         }
-        adapter = new TransactionAdapter(items);
-        recyclerView.setAdapter(adapter);
+        currentAdapter = new TransactionAdapter(items);
+        recyclerView.setAdapter(currentAdapter);
+    }
+    
+    private void loadDailyData() {
+        List<TransactionDbHelper.DailySummary> summaries = TransactionDbHelper.getDailySummaries(this);
+        currentAdapter = new DailyAdapter(summaries);
+        recyclerView.setAdapter(currentAdapter);
     }
     
     private void exportDataToUri(android.net.Uri uri) {
@@ -171,7 +186,11 @@ public class HistoryActivity extends AppCompatActivity {
                 final int count = importedCount;
                 runOnUiThread(() -> {
                     Toast.makeText(this, "Imported " + count + " new records", Toast.LENGTH_SHORT).show();
-                    loadData(); // Refresh list
+                    
+                    // Refresh current view
+                    MaterialButtonToggleGroup toggle = findViewById(R.id.toggleViewMode);
+                    if (toggle.getCheckedButtonId() == R.id.btnModeDaily) loadDailyData();
+                    else loadTransactionData();
                 });
                 
             } catch (Exception e) {
@@ -181,7 +200,7 @@ public class HistoryActivity extends AppCompatActivity {
         }).start();
     }
 
-    // --- Inner Classes for List ---
+    // --- Transaction List Adapter ---
 
     private static class TransactionItem {
         long timestamp;
@@ -230,6 +249,49 @@ public class HistoryActivity extends AppCompatActivity {
                 super(itemView);
                 tvDate = itemView.findViewById(R.id.tvDate);
                 tvDelta = itemView.findViewById(R.id.tvDelta);
+            }
+        }
+    }
+    
+    // --- Daily Summary Adapter ---
+    
+    private class DailyAdapter extends RecyclerView.Adapter<DailyAdapter.DailyViewHolder> {
+        private final List<TransactionDbHelper.DailySummary> list;
+
+        DailyAdapter(List<TransactionDbHelper.DailySummary> list) {
+            this.list = list;
+        }
+
+        @NonNull
+        @Override
+        public DailyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_daily_summary, parent, false);
+            return new DailyViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull DailyViewHolder holder, int position) {
+            TransactionDbHelper.DailySummary item = list.get(position);
+            holder.tvDay.setText(item.dateStr);
+            String sign = item.totalChange > 0 ? "+" : "";
+            holder.tvTotal.setText(sign + item.totalChange);
+            holder.tvTotal.setTextColor(item.totalChange >= 0 ? 
+                    getColor(R.color.md_theme_dark_primary) : getColor(R.color.md_theme_dark_error));
+        }
+
+        @Override
+        public int getItemCount() {
+            return list.size();
+        }
+
+        class DailyViewHolder extends RecyclerView.ViewHolder {
+            TextView tvDay, tvTotal;
+
+            DailyViewHolder(View itemView) {
+                super(itemView);
+                tvDay = itemView.findViewById(R.id.tvDay);
+                tvTotal = itemView.findViewById(R.id.tvDailyTotal);
             }
         }
     }

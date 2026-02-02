@@ -5,6 +5,16 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Calendar;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.TreeMap;
+import java.util.Collections;
 
 public class TransactionDbHelper extends SQLiteOpenHelper {
     public static final int DATABASE_VERSION = 1;
@@ -44,20 +54,48 @@ public class TransactionDbHelper extends SQLiteOpenHelper {
     public static void logTransaction(Context context, int delta, int newTotal) {
         try (TransactionDbHelper dbHelper = new TransactionDbHelper(context)) {
             SQLiteDatabase db = dbHelper.getWritableDatabase();
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_TIMESTAMP, System.currentTimeMillis());
-            values.put(COLUMN_DELTA, delta);
-            values.put(COLUMN_TOTAL_SNAPSHOT, newTotal);
-            db.insert(TABLE_NAME, null, values);
+            long currentTime = System.currentTimeMillis();
+            
+            // 1. Check the most recent transaction
+            Cursor cursor = db.query(TABLE_NAME, 
+                new String[]{COLUMN_ID, COLUMN_TIMESTAMP, COLUMN_DELTA}, 
+                null, null, null, null, 
+                COLUMN_TIMESTAMP + " DESC", "1");
+                
+            boolean merged = false;
+            
+            if (cursor.moveToFirst()) {
+                long lastId = cursor.getLong(0);
+                long lastTime = cursor.getLong(1);
+                int lastDelta = cursor.getInt(2);
+                
+                // 30 seconds threshold
+                if ((currentTime - lastTime) < 30000) {
+                    // Update existing record
+                    ContentValues values = new ContentValues();
+                    values.put(COLUMN_DELTA, lastDelta + delta);
+                    values.put(COLUMN_TOTAL_SNAPSHOT, newTotal);
+                    values.put(COLUMN_TIMESTAMP, currentTime); // Update time to keep session alive
+                    
+                    db.update(TABLE_NAME, values, COLUMN_ID + " = ?", new String[]{String.valueOf(lastId)});
+                    merged = true;
+                }
+            }
+            cursor.close();
+            
+            if (!merged) {
+                ContentValues values = new ContentValues();
+                values.put(COLUMN_TIMESTAMP, currentTime);
+                values.put(COLUMN_DELTA, delta);
+                values.put(COLUMN_TOTAL_SNAPSHOT, newTotal);
+                db.insert(TABLE_NAME, null, values);
+            }
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
     
-    /**
-     * Imports a transaction. Prevents duplicates by checking if a transaction with the 
-     * exact same timestamp already exists.
-     */
     public static boolean importTransaction(Context context, long timestamp, int delta) {
         try (TransactionDbHelper dbHelper = new TransactionDbHelper(context)) {
             SQLiteDatabase db = dbHelper.getWritableDatabase();
@@ -74,9 +112,6 @@ public class TransactionDbHelper extends SQLiteOpenHelper {
                 ContentValues values = new ContentValues();
                 values.put(COLUMN_TIMESTAMP, timestamp);
                 values.put(COLUMN_DELTA, delta);
-                // We don't necessarily know the total snapshot during import until we recalculate all,
-                // so we can leave it 0 or approximate it. 
-                // However, the most important part is the delta and timestamp.
                 values.put(COLUMN_TOTAL_SNAPSHOT, 0); 
                 db.insert(TABLE_NAME, null, values);
                 return true;
@@ -121,8 +156,47 @@ public class TransactionDbHelper extends SQLiteOpenHelper {
     public static Cursor getAllTransactions(Context context) {
         TransactionDbHelper dbHelper = new TransactionDbHelper(context);
         SQLiteDatabase db = dbHelper.getReadableDatabase();
-        
-        // Sort by timestamp DESC
         return db.query(TABLE_NAME, null, null, null, null, null, COLUMN_TIMESTAMP + " DESC");
+    }
+    
+    // Structure for Daily Summary
+    public static class DailySummary {
+        public String dateStr;
+        public int totalChange;
+        
+        public DailySummary(String dateStr, int totalChange) {
+            this.dateStr = dateStr;
+            this.totalChange = totalChange;
+        }
+    }
+    
+    public static List<DailySummary> getDailySummaries(Context context) {
+        Map<String, Integer> dailyMap = new TreeMap<>(Collections.reverseOrder()); // Sort Descending
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        
+        try (TransactionDbHelper dbHelper = new TransactionDbHelper(context)) {
+            SQLiteDatabase db = dbHelper.getReadableDatabase();
+            Cursor cursor = db.query(TABLE_NAME, new String[]{COLUMN_TIMESTAMP, COLUMN_DELTA}, null, null, null, null, null);
+            
+            while (cursor.moveToNext()) {
+                long ts = cursor.getLong(0);
+                int delta = cursor.getInt(1);
+                
+                String day = fmt.format(new Date(ts));
+                
+                if (dailyMap.containsKey(day)) {
+                    dailyMap.put(day, dailyMap.get(day) + delta);
+                } else {
+                    dailyMap.put(day, delta);
+                }
+            }
+            cursor.close();
+        }
+        
+        List<DailySummary> results = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : dailyMap.entrySet()) {
+            results.add(new DailySummary(entry.getKey(), entry.getValue()));
+        }
+        return results;
     }
 }

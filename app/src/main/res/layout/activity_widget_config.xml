@@ -31,7 +31,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Drag the text in the preview to adjust layout."
+                android:text="Drag the items below individually to position them."
                 android:textColor="#AAAAAA"
                 android:textSize="12sp"
                 android:layout_marginBottom="24dp"/>
@@ -39,7 +39,7 @@
             <!-- Preview Section (Interactive) -->
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_height="220dp"
                 android:layout_marginBottom="32dp">
 
                 <!-- The "Widget" Preview Container -->
@@ -65,25 +65,43 @@
                         android:layout_height="match_parent"
                         android:background="#212121"/>
 
-                    <!-- Preview Content (Draggable) -->
-                    <LinearLayout
-                        android:id="@+id/previewContent"
+                    <!-- Draggable Elements -->
+                    <!-- Positioned in center initially using layout_gravity="center" -->
+                    
+                    <TextView
+                        android:id="@+id/previewAmount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center"
                         android:layout_gravity="center"
+                        android:text="0"
+                        android:textColor="#FFFFFF"
+                        android:textSize="28sp"
+                        android:textStyle="bold"
                         android:padding="8dp"
-                        android:background="#33000000"> <!-- Slight hint it is draggable -->
+                        android:background="#22000000"/>
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="- 0 +"
-                            android:textColor="#FFFFFF"
-                            android:textSize="24sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                    <Button
+                        android:id="@+id/previewPlus"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:text="+"
+                        android:textSize="20sp"
+                        android:textColor="#FFFFFF"
+                        android:background="@android:color/transparent"
+                        android:stateListAnimator="@null"/>
+                        
+                    <Button
+                        android:id="@+id/previewMinus"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:text="-"
+                        android:textSize="20sp"
+                        android:textColor="#FFFFFF"
+                        android:background="@android:color/transparent"
+                        android:stateListAnimator="@null"/>
+                        
                 </FrameLayout>
             </FrameLayout>
 
