@@ -314,8 +314,8 @@ public class WidgetConfigActivity extends AppCompatActivity {
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
             if (bitmap == null) return;
             
-            // Limit size
-            int maxDim = 1024;
+            // Limit size - reduced to 512 to prevent TransactionTooLargeException
+            int maxDim = 512;
             if (bitmap.getWidth() > maxDim || bitmap.getHeight() > maxDim) {
                 float ratio = (float)bitmap.getWidth()/bitmap.getHeight();
                 int w = (ratio > 1) ? maxDim : (int)(maxDim*ratio);

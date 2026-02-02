@@ -17,12 +17,14 @@
         android:src="@null" />
 
     <!-- 2. COLOR Background -->
-    <View
+    <!-- CRITICAL FIX: RemoteViews cannot use <View>, must use <ImageView> even for solid colors -->
+    <ImageView
         android:id="@+id/widget_bg_color"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#212121"
-        android:visibility="visible"/>
+        android:visibility="visible"
+        android:src="@null"/>
 
     <!-- 3. Independent Layers for Positioning -->
     <!-- Each element is wrapped in a full-size FrameLayout. 
