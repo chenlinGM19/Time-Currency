@@ -29,6 +29,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:enabled="true"
+            android:showOnLockScreen="true"
             android:icon="@drawable/myicon"
             android:roundIcon="@drawable/myicon">
             <intent-filter>
@@ -43,6 +44,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
+            android:showOnLockScreen="true"
             android:icon="@drawable/myicon1"
             android:roundIcon="@drawable/myicon1"
             android:label="@string/app_name">
@@ -58,6 +60,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
+            android:showOnLockScreen="true"
             android:icon="@drawable/myicon2"
             android:roundIcon="@drawable/myicon2"
             android:label="@string/app_name">

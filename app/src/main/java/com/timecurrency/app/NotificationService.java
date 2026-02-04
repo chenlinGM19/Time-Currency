@@ -19,7 +19,8 @@ import androidx.core.app.NotificationCompat;
 public class NotificationService extends Service {
 
     public static final String ACTION_REFRESH = "ACTION_REFRESH";
-    private static final String CHANNEL_ID = "TimeCurrencyChannel";
+    // Changed Channel ID to force update of settings (Importance) on existing installs
+    private static final String CHANNEL_ID = "TimeCurrencyChannel_v2";
     private static final int NOTIFICATION_ID = 1;
 
     @Override
@@ -108,7 +109,9 @@ public class NotificationService extends Service {
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                // Raised priority to ensure it shows on lock screen (Default vs Low)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setStyle(new NotificationCompat.DecoratedCustomViewStyle());
         
         createNotificationChannel(context);
@@ -120,14 +123,18 @@ public class NotificationService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = context.getSystemService(NotificationManager.class);
             if (manager != null && manager.getNotificationChannel(CHANNEL_ID) == null) {
+                // Increased importance to DEFAULT to ensure visibility on lock screens
                 NotificationChannel channel = new NotificationChannel(
                         CHANNEL_ID,
                         "Currency Status",
-                        NotificationManager.IMPORTANCE_LOW
+                        NotificationManager.IMPORTANCE_DEFAULT
                 );
                 channel.setDescription("Shows persistent time currency");
                 channel.setShowBadge(false);
                 channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+                // We mute sound on the channel itself to prevent constant dinging on updates,
+                // relying on visual updates.
+                channel.setSound(null, null);
                 manager.createNotificationChannel(channel);
             }
         }
